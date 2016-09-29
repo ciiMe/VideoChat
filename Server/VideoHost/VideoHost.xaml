@@ -14,7 +14,7 @@
             <TextBlock Margin="10" x:Name="msgContent" Text="Hello me..." Foreground="White" FontWeight="Bold" MaxHeight="200" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
         </Grid>
         <Grid Grid.Row="1" Background="Black">
-            <MediaElement x:Name="RemoteVideo" AudioCategory="Communications" />
+            <CaptureElement x:Name="previewElement" />
         </Grid>
         <Grid Grid.Row="2" Background="Gray">
             <Grid.ColumnDefinitions>
@@ -22,9 +22,10 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Margin="10" x:Name="ShowConfig" Content="Choose Config" />
-            <Button Grid.Column="1" Margin="10" x:Name="StartVideo" Content="Start Video" />
-            <Button Grid.Column="2" Margin="10" x:Name="StopVideo" Content="End Video" />
+            <ComboBox Grid.Column="0" Margin="10" x:Name="SupportedFormat" Width="200"> 
+            </ComboBox>
+            <Button Grid.Column="1" Margin="10" x:Name="StartVideo" Content="Start Video" Click="StartVideo_Click" />
+            <Button Grid.Column="2" Margin="10" x:Name="StopVideo" Content="End Video" Click="StopVideo_Click" />
         </Grid>
     </Grid>
 </Page>

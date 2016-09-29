@@ -11,6 +11,8 @@ using SimpleCommunication.Common;
 using Microsoft.Samples.SimpleCommunication;
 using Windows.Media.Capture;
 using Windows.UI.Xaml.Media;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SimpleCommunication
 {
@@ -21,15 +23,59 @@ namespace SimpleCommunication
         private const string VideoSourceSubType = "YUY2";
         VideoEncodingProperties previewEncodingProperties;
         VideoEncodingProperties recordEncodingProperties;
-        
+
         CaptureDevice device = null;
-        bool? roleIsActive = null;
-        int isTerminator = 0;
-        bool activated = false;
+        bool _isRecording = false;
+
+        List<MediaEncodingProfile> _encodingProfiles;
+        List<VideoEncodingProperties> _validVideoRecordProperties;
 
         public VideoHost()
         {
             InitializeComponent();
+        }
+
+        private void NewMethod()
+        {
+        }
+
+        private void loadAllVideoProperties()
+        {
+            _encodingProfiles = new List<MediaEncodingProfile>();
+            _encodingProfiles.Add(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD1080p));
+            _encodingProfiles.Add(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p));
+            //720*480
+            _encodingProfiles.Add(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Ntsc));
+            //720*576
+            _encodingProfiles.Add(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Pal));
+            //320*240
+            _encodingProfiles.Add(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Qvga));
+            //640*480
+            _encodingProfiles.Add(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Vga));
+
+            var properties = device.CaptureSource.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoRecord);
+            SupportedFormat.Items.Clear();
+            _validVideoRecordProperties = new List<VideoEncodingProperties>();
+            foreach (var p in properties)
+            {
+                var pp = p as VideoEncodingProperties;
+
+                if (pp.Subtype != VideoSourceSubType)
+                {
+                    continue;
+                }
+
+                if (isEncodingPropertyInProfileList(pp, _encodingProfiles))
+                {
+                    _validVideoRecordProperties.Add(pp);
+                    SupportedFormat.Items.Add($"{pp.Width}*{pp.Height}  {pp.FrameRate.Numerator}FPS");
+                }
+            }
+        }
+
+        private bool isEncodingPropertyInProfileList(VideoEncodingProperties p, List<MediaEncodingProfile> profile)
+        {
+            return profile.Exists(item => item.Video.Width == p.Width && item.Video.Height == p.Height);
         }
 
         private void NotifyUser(string strMessage, NotifyType type)
@@ -58,14 +104,13 @@ namespace SimpleCommunication
         protected async override void OnNavigatedTo(NavigationEventArgs e)
         {
             var cameraFound = await CaptureDevice.CheckForRecordingDeviceAsync();
-
             if (cameraFound)
             {
                 device = new CaptureDevice();
-                await InitializeAsync();
+                await device.InitializeAsync();
+                loadAllVideoProperties();
                 device.IncomingConnectionArrived += device_IncomingConnectionArrived;
                 device.CaptureFailed += device_CaptureFailed;
-                RemoteVideo.MediaFailed += RemoteVideo_MediaFailed;
             }
             else
             {
@@ -76,40 +121,33 @@ namespace SimpleCommunication
         protected async override void OnNavigatingFrom(NavigatingCancelEventArgs e)
         {
             base.OnNavigatingFrom(e);
-
-            if (activated)
-            {
-                RemoteVideo.Stop();
-                RemoteVideo.Source = null;
-            }
-
-            await device.CleanUpAsync();
-            device = null;
+            await EndCallAsync();
         }
 
         private async Task InitializeAsync(CancellationToken cancel = default(CancellationToken))
         {
             NotifyUser("Initializing...", NotifyType.StatusMessage);
 
+            var recordFormat = _validVideoRecordProperties[SupportedFormat.SelectedIndex];
+
             try
             {
-                await device.InitializeAsync();
-
                 var rSetting = await device.SelectPreferredCameraStreamSettingAsync(MediaStreamType.VideoRecord, ((x) =>
                 {
-                    var previewStreamEncodingProperty = x as VideoEncodingProperties;
-
-                    return (previewStreamEncodingProperty.Width >= VideoRecordMinWidth &&
-                        previewStreamEncodingProperty.Subtype == VideoSourceSubType);
+                    var p = x as VideoEncodingProperties;
+                    return (p.Width == recordFormat.Width && p.Height == recordFormat.Height && p.Subtype == recordFormat.Subtype);
                 }));
                 recordEncodingProperties = rSetting as VideoEncodingProperties;
 
+                //todo: we should also choose preview setting as well, it may be not a good choice to use the default.
+                var pSetting = await device.SelectPreferredCameraStreamSettingAsync(MediaStreamType.VideoPreview, ((x) =>
+                {
+                    var p = x as VideoEncodingProperties;
+                    return (p.Width <= recordFormat.Width);
+                }));
+                previewEncodingProperties = pSetting as VideoEncodingProperties;
+
                 await StartRecordToCustomSink();
-
-                RemoteVideo.Source = null;
-
-                roleIsActive = false;
-                Interlocked.Exchange(ref isTerminator, 0);
 
                 NotifyUser("Tap 'Call' button to start call", NotifyType.StatusMessage);
             }
@@ -119,56 +157,86 @@ namespace SimpleCommunication
             }
         }
 
-        async void RemoteVideo_MediaFailed(object sender, ExceptionRoutedEventArgs e)
-        {
-            if (Interlocked.CompareExchange(ref isTerminator, 1, 0) == 0)
-            {
-                await EndCallAsync();
-            }
-        }
-
         async void device_IncomingConnectionArrived(object sender, IncomingConnectionEventArgs e)
         {
             e.Accept();
 
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, (() =>
             {
-                activated = true;
+                _isRecording = true;
                 NotifyUser("Connected. Remote machine address: " + e.RemoteUrl.Replace("stsp://", ""), NotifyType.StatusMessage);
             }));
         }
 
         async void device_CaptureFailed(object sender, MediaCaptureFailedEventArgs e)
         {
-            if (Interlocked.CompareExchange(ref isTerminator, 1, 0) == 0)
-            {
-                await EndCallAsync();
-            }
+            NotifyUser("Device CaptureFailed:" + e.Message, NotifyType.ErrorMessage);
+            await EndCallAsync();
         }
 
         private async Task StartRecordToCustomSink()
         {
-            MediaEncodingProfile mep = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p);
+            MediaEncodingProfile mep = getSelectedProfile();
+
+            if (mep == null)
+            {
+                NotifyUser("No valid date is found when try to choose video record format.", NotifyType.ErrorMessage);
+                await EndCallAsync();
+            }
+            previewElement.Source = device.CaptureSource;
+            await device.CaptureSource.StartPreviewAsync();
+            await device.StartRecordingAsync(mep);
+
+            _isRecording = true;
+        }
+
+        private MediaEncodingProfile getSelectedProfile()
+        {
+            var recordFormat = _validVideoRecordProperties[SupportedFormat.SelectedIndex];
+            var mep = _encodingProfiles.FirstOrDefault(p => p.Video.Width == recordFormat.Width && p.Video.Height == recordFormat.Height);
             mep.Video.FrameRate.Numerator = 15;
             mep.Video.FrameRate.Denominator = 1;
             mep.Container = null;
-
-            await device.StartRecordingAsync(mep);
+            return mep;
         }
 
         private async Task EndCallAsync()
         {
+            if (device == null)
+            {
+                return;
+            }
+            await device.CaptureSource.StopPreviewAsync();
             await device.CleanUpAsync();
+            device = null;
 
-            // end the call session
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, (() =>
             {
-                RemoteVideo.Stop();
-                RemoteVideo.Source = null;
+                previewElement.Source = null;
             }));
+            _isRecording = false;
+        }
 
-            // Start waiting for a new call
+        private async void StartVideo_Click(object sender, RoutedEventArgs e)
+        {
+            if (SupportedFormat.Items.Count == 0)
+            {
+                NotifyUser("No video record format is avilable.", NotifyType.ErrorMessage);
+                return;
+            }
+            if (SupportedFormat.SelectedIndex < 0)
+            {
+                NotifyUser("Please select a record format.", NotifyType.ErrorMessage);
+                SupportedFormat.Focus(FocusState.Pointer);
+                return;
+            }
+
             await InitializeAsync();
+        }
+
+        private async void StopVideo_Click(object sender, RoutedEventArgs e)
+        {
+            await EndCallAsync();
         }
     }
 }
