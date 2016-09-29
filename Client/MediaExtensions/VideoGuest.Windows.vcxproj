@@ -26,6 +26,46 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AsyncCB.h" />
+    <ClInclude Include="BaseAttributes.h" />
+    <ClInclude Include="BufferPacket.h" />
+    <ClInclude Include="CritSec.h" />
+    <ClInclude Include="LinkList.h" />
+    <ClInclude Include="Marker.h" />
+    <ClInclude Include="MediaBufferWrapper.h" />
+    <ClInclude Include="NetworkChannel.h" />
+    <ClInclude Include="NetworkClient.h" />
+    <ClInclude Include="NetworkServer.h" />
+    <ClInclude Include="OpQueue.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="StspDefs.h" />
+    <ClInclude Include="StspMediaSink.h" />
+    <ClInclude Include="StspMediaSinkProxy.h" />
+    <ClInclude Include="StspMediaSource.h" />
+    <ClInclude Include="StspMediaStream.h" />
+    <ClInclude Include="StspNetwork.h" />
+    <ClInclude Include="StspSchemeHandler.h" />
+    <ClInclude Include="StspStreamSink.h" />
+    <ClInclude Include="Trace.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BufferPacket.cpp" />
+    <ClCompile Include="Marker.cpp" />
+    <ClCompile Include="MediaBufferWrapper.cpp" />
+    <ClCompile Include="NetworkChannel.cpp" />
+    <ClCompile Include="NetworkClient.cpp" />
+    <ClCompile Include="NetworkServer.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="StspMediaSink.cpp" />
+    <ClCompile Include="StspMediaSinkProxy.cpp" />
+    <ClCompile Include="StspMediaSource.cpp" />
+    <ClCompile Include="StspMediaStream.cpp" />
+    <ClCompile Include="StspSchemeHandler.cpp" />
+    <ClCompile Include="StspStreamSink.cpp" />
+    <ClCompile Include="Trace.cpp" />
+    <ClCompile Include="Validation.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{c9492b18-ecb3-4e55-81fe-f0a6e8ee1a66}</ProjectGuid>
     <RootNamespace>Microsoft.Samples.SimpleCommunication</RootNamespace>
@@ -72,7 +112,6 @@
     <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Import Project="..\Microsoft.Samples.SimpleCommunication.Shared\Microsoft.Samples.SimpleCommunication.Shared.vcxitems" Label="Shared" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -118,7 +157,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <PreprocessorDefinitions>_WINRT_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
