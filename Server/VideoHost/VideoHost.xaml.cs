@@ -1,7 +1,6 @@
 ﻿using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
-using SDKTemplate;
 using System;
 
 using System.Threading;
@@ -11,6 +10,7 @@ using Windows.Media.MediaProperties;
 using SimpleCommunication.Common;
 using Microsoft.Samples.SimpleCommunication;
 using Windows.Media.Capture;
+using Windows.UI.Xaml.Media;
 
 namespace SimpleCommunication
 {
@@ -21,9 +21,7 @@ namespace SimpleCommunication
         private const string VideoSourceSubType = "YUY2";
         VideoEncodingProperties previewEncodingProperties;
         VideoEncodingProperties recordEncodingProperties;
-
-        MainPage rootPage = MainPage.Current;
-
+        
         CaptureDevice device = null;
         bool? roleIsActive = null;
         int isTerminator = 0;
@@ -32,6 +30,29 @@ namespace SimpleCommunication
         public VideoHost()
         {
             InitializeComponent();
+        }
+
+        private void NotifyUser(string strMessage, NotifyType type)
+        {
+            switch (type)
+            {
+                case NotifyType.StatusMessage:
+                    msgBorder.Background = new SolidColorBrush(Windows.UI.Colors.Green);
+                    break;
+                case NotifyType.ErrorMessage:
+                    msgBorder.Background = new SolidColorBrush(Windows.UI.Colors.Red);
+                    break;
+            }
+            msgContent.Text = strMessage;
+
+            if (msgContent.Text != string.Empty)
+            {
+                msgBorder.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                msgBorder.Visibility = Visibility.Collapsed;
+            }
         }
 
         protected async override void OnNavigatedTo(NavigationEventArgs e)
@@ -48,7 +69,7 @@ namespace SimpleCommunication
             }
             else
             {
-                rootPage.NotifyUser("A machine with a camera and a microphone is required to run this sample.", NotifyType.ErrorMessage);
+                NotifyUser("A machine with a camera and a microphone is required to run this sample.", NotifyType.ErrorMessage);
             }
         }
 
@@ -68,7 +89,7 @@ namespace SimpleCommunication
 
         private async Task InitializeAsync(CancellationToken cancel = default(CancellationToken))
         {
-            rootPage.NotifyUser("Initializing...", NotifyType.StatusMessage);
+            NotifyUser("Initializing...", NotifyType.StatusMessage);
 
             try
             {
@@ -90,11 +111,11 @@ namespace SimpleCommunication
                 roleIsActive = false;
                 Interlocked.Exchange(ref isTerminator, 0);
 
-                rootPage.NotifyUser("Tap 'Call' button to start call", NotifyType.StatusMessage);
+                NotifyUser("Tap 'Call' button to start call", NotifyType.StatusMessage);
             }
             catch (Exception)
             {
-                rootPage.NotifyUser("Initialization error. Restart the sample to try again.", NotifyType.ErrorMessage);
+                NotifyUser("Initialization error. Restart the sample to try again.", NotifyType.ErrorMessage);
             }
         }
 
@@ -113,7 +134,7 @@ namespace SimpleCommunication
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, (() =>
             {
                 activated = true;
-                rootPage.NotifyUser("Connected. Remote machine address: " + e.RemoteUrl.Replace("stsp://", ""), NotifyType.StatusMessage);
+                NotifyUser("Connected. Remote machine address: " + e.RemoteUrl.Replace("stsp://", ""), NotifyType.StatusMessage);
             }));
         }
 
