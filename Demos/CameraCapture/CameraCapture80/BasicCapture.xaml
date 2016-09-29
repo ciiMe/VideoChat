@@ -1,0 +1,29 @@
+﻿<common:LayoutAwarePage
+    x:Class="CameraCapture.BasicCapture"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:$rootsnamespace$"
+    xmlns:common="using:SDKTemplate.Common"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid x:Name="LayoutRoot" Background="White" >
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="300" />
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Margin="0,10,0,0" Grid.Row="0">
+            <Button x:Name="btnStartRecord" Click="btnStartRecord_Click" Margin="0,0,10,0">Post to Server</Button>
+            <CheckBox x:Name="TraceToServer" Click="TraceToServer_Checked" Margin="0,0,10,0">Trace to Server</CheckBox>
+            <Button x:Name="btnSaveLocal" Click="btnSaveLocal_Click" Margin="0,0,10,0">Save to Local</Button>
+            <Button x:Name="btnStopRecord" Click="btnStop_Click" Margin="0,0,10,0" IsEnabled="False">Stop Record</Button>
+            <Button x:Name="btnPlayLocal" Click="btnPlayLocal_Click" Margin="0,0,10,0" >Play local.mp4</Button>
+            <Button x:Name="btnPlayVritual" Click="btnPlayVirtual_Click" Margin="0,0,10,0" >Play Virtual Stream</Button>
+        </StackPanel>
+        <CaptureElement x:Name="previewElement1" Margin="0,10,0,0" Grid.Row="1" Visibility="Collapsed" />
+        <MediaElement x:Name="reviewElement" Margin="0,10,0,0" Grid.Row="1" Visibility="Collapsed"/>
+        <TextBox x:Name="TraceLog" Grid.Row="2" Margin="0,10,0,0" AcceptsReturn="True" TextWrapping="Wrap" Visibility="Collapsed" />
+    </Grid>
+</common:LayoutAwarePage>
