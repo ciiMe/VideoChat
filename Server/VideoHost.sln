@@ -3,24 +3,25 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SimpleCommunication", "SimpleCommunication", "{2BA165F4-618C-43CA-88C4-459583E26CE8}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoHost", "Windows\VideoHost.csproj", "{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MediaExtensions", "MediaExtensions", "{F2175C65-F6D9-44F5-9E88-D21299714E35}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoHost", "VideoHost\VideoHost.csproj", "{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VideoHost.windows", "MediaExtensions\Microsoft.Samples.SimpleCommunication.Windows\Microsoft.Samples.SimpleCommunication.Windows.vcxproj", "{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
 		Debug|ARM = Debug|ARM
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
 		Release|ARM = Release|ARM
 		Release|Win32 = Release|Win32
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|ARM.ActiveCfg = Debug|ARM
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|ARM.Build.0 = Debug|ARM
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|ARM.Deploy.0 = Debug|ARM
@@ -30,6 +31,9 @@ Global
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|x64.ActiveCfg = Debug|x64
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|x64.Build.0 = Debug|x64
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Debug|x64.Deploy.0 = Debug|x64
+		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|Any CPU.Deploy.0 = Release|Any CPU
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|ARM.ActiveCfg = Release|ARM
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|ARM.Build.0 = Release|ARM
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|ARM.Deploy.0 = Release|ARM
@@ -39,12 +43,14 @@ Global
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|x64.ActiveCfg = Release|x64
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|x64.Build.0 = Release|x64
 		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0}.Release|x64.Deploy.0 = Release|x64
+		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|ARM.ActiveCfg = Debug|ARM
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|ARM.Build.0 = Debug|ARM
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|Win32.ActiveCfg = Debug|Win32
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|Win32.Build.0 = Debug|Win32
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|x64.ActiveCfg = Debug|x64
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|x64.Build.0 = Debug|x64
+		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|Any CPU.ActiveCfg = Release|Win32
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|ARM.ActiveCfg = Release|ARM
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|ARM.Build.0 = Release|ARM
 		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|Win32.ActiveCfg = Release|Win32
@@ -54,10 +60,5 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{2CC3C95E-A6FC-4EC5-AABB-655951F13CA0} = {2BA165F4-618C-43CA-88C4-459583E26CE8}
-		{F2175C65-F6D9-44F5-9E88-D21299714E35} = {2BA165F4-618C-43CA-88C4-459583E26CE8}
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66} = {F2175C65-F6D9-44F5-9E88-D21299714E35}
 	EndGlobalSection
 EndGlobal

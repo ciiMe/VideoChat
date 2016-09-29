@@ -155,7 +155,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MediaExtensions\Microsoft.Samples.SimpleCommunication.Windows\Microsoft.Samples.SimpleCommunication.Windows.vcxproj">
       <Project>{c9492b18-ecb3-4e55-81fe-f0a6e8ee1a66}</Project>
-      <Name>Microsoft.Samples.SimpleCommunication.Windows</Name>
+      <Name>VideoHost.windows</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
