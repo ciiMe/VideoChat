@@ -18,8 +18,6 @@ namespace SimpleCommunication
 {
     public sealed partial class VideoHost : Page
     {
-        private const uint VideoPreviewMinWidth = 600;
-        private const uint VideoRecordMinWidth = 1200;
         private const string VideoSourceSubType = "YUY2";
         VideoEncodingProperties previewEncodingProperties;
         VideoEncodingProperties recordEncodingProperties;
@@ -41,6 +39,7 @@ namespace SimpleCommunication
 
         private void loadAllVideoProperties()
         {
+            //we only support standard recording profiles.
             _encodingProfiles = new List<MediaEncodingProfile>();
             _encodingProfiles.Add(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD1080p));
             _encodingProfiles.Add(MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p));
@@ -68,7 +67,7 @@ namespace SimpleCommunication
                 if (isEncodingPropertyInProfileList(pp, _encodingProfiles))
                 {
                     _validVideoRecordProperties.Add(pp);
-                    SupportedFormat.Items.Add($"{pp.Width}*{pp.Height}  {pp.FrameRate.Numerator}FPS");
+                    SupportedFormat.Items.Add($"{pp.Width}*{pp.Height}  {Convert.ToInt32(0.5 + pp.FrameRate.Numerator / pp.FrameRate.Denominator)}FPS");
                 }
             }
         }
@@ -109,8 +108,8 @@ namespace SimpleCommunication
                 device = new CaptureDevice();
                 await device.InitializeAsync();
                 loadAllVideoProperties();
-                device.IncomingConnectionArrived += device_IncomingConnectionArrived;
-                device.CaptureFailed += device_CaptureFailed;
+                await device.CleanUpAsync();
+                device = null;
             }
             else
             {
@@ -121,7 +120,7 @@ namespace SimpleCommunication
         protected async override void OnNavigatingFrom(NavigatingCancelEventArgs e)
         {
             base.OnNavigatingFrom(e);
-            await EndCallAsync();
+            await EndRecording();
         }
 
         private async Task InitializeAsync(CancellationToken cancel = default(CancellationToken))
@@ -171,7 +170,7 @@ namespace SimpleCommunication
         async void device_CaptureFailed(object sender, MediaCaptureFailedEventArgs e)
         {
             NotifyUser("Device CaptureFailed:" + e.Message, NotifyType.ErrorMessage);
-            await EndCallAsync();
+            await EndRecording();
         }
 
         private async Task StartRecordToCustomSink()
@@ -181,7 +180,7 @@ namespace SimpleCommunication
             if (mep == null)
             {
                 NotifyUser("No valid date is found when try to choose video record format.", NotifyType.ErrorMessage);
-                await EndCallAsync();
+                await EndRecording();
             }
             previewElement.Source = device.CaptureSource;
             await device.CaptureSource.StartPreviewAsync();
@@ -200,7 +199,7 @@ namespace SimpleCommunication
             return mep;
         }
 
-        private async Task EndCallAsync()
+        private async Task EndRecording()
         {
             if (device == null)
             {
@@ -231,12 +230,35 @@ namespace SimpleCommunication
                 return;
             }
 
+            if (!await createRecordingObject())
+            {
+                return;
+            }
             await InitializeAsync();
+        }
+
+        private async Task<bool> createRecordingObject()
+        {
+            var cameraFound = await CaptureDevice.CheckForRecordingDeviceAsync();
+            if (cameraFound)
+            {
+                device = new CaptureDevice();
+                await device.InitializeAsync();
+
+                device.IncomingConnectionArrived += device_IncomingConnectionArrived;
+                device.CaptureFailed += device_CaptureFailed;
+                return true;
+            }
+            else
+            {
+                NotifyUser("A machine with a camera and a microphone is required to run this sample.", NotifyType.ErrorMessage);
+                return false;
+            }
         }
 
         private async void StopVideo_Click(object sender, RoutedEventArgs e)
         {
-            await EndCallAsync();
+            await EndRecording();
         }
     }
 }
