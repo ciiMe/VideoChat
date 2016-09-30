@@ -138,12 +138,22 @@ namespace SimpleCommunication
                     return (p.Width == recordFormat.Width && p.Height == recordFormat.Height && p.Subtype == recordFormat.Subtype);
                 }));
                 recordEncodingProperties = rSetting as VideoEncodingProperties;
-                
+
                 var pSetting = await device.SelectPreferredCameraStreamSettingAsync(MediaStreamType.VideoPreview, ((x) =>
                 {
                     var p = x as VideoEncodingProperties;
-                    return (p.Width <= recordFormat.Width);
+                    return (p.Width == recordFormat.Width && p.Height == recordFormat.Height);
                 }));
+
+                if (pSetting == null)
+                {
+                    pSetting = await device.SelectPreferredCameraStreamSettingAsync(MediaStreamType.VideoPreview, ((x) =>
+                  {
+                      var p = x as VideoEncodingProperties;
+                      return (p.Width <= recordFormat.Width);
+                  }));
+                }
+
                 previewEncodingProperties = pSetting as VideoEncodingProperties;
 
                 await StartRecordToCustomSink();
@@ -177,7 +187,7 @@ namespace SimpleCommunication
             var recordFormat = _validVideoRecordProperties[SupportedFormat.SelectedIndex];
             var mep = _encodingProfiles.FirstOrDefault(p => p.Video.Width == recordFormat.Width && p.Video.Height == recordFormat.Height);
             mep.Video.FrameRate.Numerator = 15;
-            mep.Video.FrameRate.Denominator = 1;
+            mep.Video.FrameRate.Denominator = 1; 
             mep.Container = null;
             return mep;
         }
