@@ -33,8 +33,49 @@ namespace SimpleCommunication
             InitializeComponent();
         }
 
-        private void NewMethod()
+        private void NotifyUser(string strMessage, NotifyType type)
         {
+            switch (type)
+            {
+                case NotifyType.StatusMessage:
+                    msgBorder.Background = new SolidColorBrush(Windows.UI.Colors.Green);
+                    break;
+                case NotifyType.ErrorMessage:
+                    msgBorder.Background = new SolidColorBrush(Windows.UI.Colors.Red);
+                    break;
+            }
+            msgContent.Text = strMessage;
+
+            if (msgContent.Text != string.Empty)
+            {
+                msgBorder.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                msgBorder.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        protected async override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            await readCameraProperties();
+        }
+
+        private async Task readCameraProperties()
+        {
+            var cameraFound = await CaptureDevice.CheckForRecordingDeviceAsync();
+            if (cameraFound)
+            {
+                device = new CaptureDevice();
+                await device.InitializeAsync();
+                loadAllVideoProperties();
+                await device.CleanUpAsync();
+                device = null;
+            }
+            else
+            {
+                NotifyUser("A machine with a camera and a microphone is required to run this sample.", NotifyType.ErrorMessage);
+            }
         }
 
         private void loadAllVideoProperties()
@@ -77,53 +118,13 @@ namespace SimpleCommunication
             return profile.Exists(item => item.Video.Width == p.Width && item.Video.Height == p.Height);
         }
 
-        private void NotifyUser(string strMessage, NotifyType type)
-        {
-            switch (type)
-            {
-                case NotifyType.StatusMessage:
-                    msgBorder.Background = new SolidColorBrush(Windows.UI.Colors.Green);
-                    break;
-                case NotifyType.ErrorMessage:
-                    msgBorder.Background = new SolidColorBrush(Windows.UI.Colors.Red);
-                    break;
-            }
-            msgContent.Text = strMessage;
-
-            if (msgContent.Text != string.Empty)
-            {
-                msgBorder.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                msgBorder.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        protected async override void OnNavigatedTo(NavigationEventArgs e)
-        {
-            var cameraFound = await CaptureDevice.CheckForRecordingDeviceAsync();
-            if (cameraFound)
-            {
-                device = new CaptureDevice();
-                await device.InitializeAsync();
-                loadAllVideoProperties();
-                await device.CleanUpAsync();
-                device = null;
-            }
-            else
-            {
-                NotifyUser("A machine with a camera and a microphone is required to run this sample.", NotifyType.ErrorMessage);
-            }
-        }
-
         protected async override void OnNavigatingFrom(NavigatingCancelEventArgs e)
         {
             base.OnNavigatingFrom(e);
             await EndRecording();
         }
 
-        private async Task InitializeAsync(CancellationToken cancel = default(CancellationToken))
+        private async Task startVideoRecord(CancellationToken cancel = default(CancellationToken))
         {
             NotifyUser("Initializing...", NotifyType.StatusMessage);
 
@@ -137,8 +138,7 @@ namespace SimpleCommunication
                     return (p.Width == recordFormat.Width && p.Height == recordFormat.Height && p.Subtype == recordFormat.Subtype);
                 }));
                 recordEncodingProperties = rSetting as VideoEncodingProperties;
-
-                //todo: we should also choose preview setting as well, it may be not a good choice to use the default.
+                
                 var pSetting = await device.SelectPreferredCameraStreamSettingAsync(MediaStreamType.VideoPreview, ((x) =>
                 {
                     var p = x as VideoEncodingProperties;
@@ -148,29 +148,12 @@ namespace SimpleCommunication
 
                 await StartRecordToCustomSink();
 
-                NotifyUser("Tap 'Call' button to start call", NotifyType.StatusMessage);
+                NotifyUser("", NotifyType.StatusMessage);
             }
             catch (Exception)
             {
                 NotifyUser("Initialization error. Restart the sample to try again.", NotifyType.ErrorMessage);
             }
-        }
-
-        async void device_IncomingConnectionArrived(object sender, IncomingConnectionEventArgs e)
-        {
-            e.Accept();
-
-            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, (() =>
-            {
-                _isRecording = true;
-                NotifyUser("Connected. Remote machine address: " + e.RemoteUrl.Replace("stsp://", ""), NotifyType.StatusMessage);
-            }));
-        }
-
-        async void device_CaptureFailed(object sender, MediaCaptureFailedEventArgs e)
-        {
-            NotifyUser("Device CaptureFailed:" + e.Message, NotifyType.ErrorMessage);
-            await EndRecording();
         }
 
         private async Task StartRecordToCustomSink()
@@ -234,7 +217,7 @@ namespace SimpleCommunication
             {
                 return;
             }
-            await InitializeAsync();
+            await startVideoRecord();
         }
 
         private async Task<bool> createRecordingObject()
@@ -254,6 +237,23 @@ namespace SimpleCommunication
                 NotifyUser("A machine with a camera and a microphone is required to run this sample.", NotifyType.ErrorMessage);
                 return false;
             }
+        }
+
+        async void device_IncomingConnectionArrived(object sender, IncomingConnectionEventArgs e)
+        {
+            e.Accept();
+
+            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, (() =>
+            {
+                _isRecording = true;
+                NotifyUser("Connected. Remote machine address: " + e.RemoteUrl.Replace("stsp://", ""), NotifyType.StatusMessage);
+            }));
+        }
+
+        async void device_CaptureFailed(object sender, MediaCaptureFailedEventArgs e)
+        {
+            NotifyUser("Device CaptureFailed:" + e.Message, NotifyType.ErrorMessage);
+            await EndRecording();
         }
 
         private async void StopVideo_Click(object sender, RoutedEventArgs e)
