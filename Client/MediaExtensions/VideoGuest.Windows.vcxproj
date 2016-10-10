@@ -40,13 +40,10 @@
     <ClInclude Include="OpQueue.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="StspDefs.h" />
-    <ClInclude Include="StspMediaSink.h" />
-    <ClInclude Include="StspMediaSinkProxy.h" />
     <ClInclude Include="StspMediaSource.h" />
     <ClInclude Include="StspMediaStream.h" />
     <ClInclude Include="StspNetwork.h" />
     <ClInclude Include="StspSchemeHandler.h" />
-    <ClInclude Include="StspStreamSink.h" />
     <ClInclude Include="Trace.h" />
   </ItemGroup>
   <ItemGroup>
@@ -57,12 +54,9 @@
     <ClCompile Include="NetworkClient.cpp" />
     <ClCompile Include="NetworkServer.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="StspMediaSink.cpp" />
-    <ClCompile Include="StspMediaSinkProxy.cpp" />
     <ClCompile Include="StspMediaSource.cpp" />
     <ClCompile Include="StspMediaStream.cpp" />
     <ClCompile Include="StspSchemeHandler.cpp" />
-    <ClCompile Include="StspStreamSink.cpp" />
     <ClCompile Include="Trace.cpp" />
     <ClCompile Include="Validation.cpp" />
   </ItemGroup>
