@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/2010/manifest" xmlns:m2="http://schemas.microsoft.com/appx/2013/manifest">
-  <Identity Name="VideoGuest" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" Version="1.0.0.8" />
+  <Identity Name="VideoGuest" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" Version="1.1.0.12" />
   <Properties>
     <DisplayName>VideoGuest</DisplayName>
     <PublisherDisplayName>Microsoft Corporation</PublisherDisplayName>
@@ -28,6 +28,12 @@
             <Task Type="audio" />
             <Task Type="controlChannel" />
           </BackgroundTasks>
+        </Extension>
+        <Extension Category="windows.protocol">
+          <Protocol Name="zonekeyvideoguest">
+            <Logo>Assets\tile-sdk.png</Logo>
+            <DisplayName>Start the ZongKey VideoGuest App.</DisplayName>
+          </Protocol>
         </Extension>
       </Extensions>
       <m2:VisualElements DisplayName="VideoGuest" Description="VideoGuest" ForegroundText="light" BackgroundColor="#00b2f0" Square150x150Logo="Assets\squaretile-sdk.png" Square30x30Logo="Assets\smalltile-Windows-sdk.png">
