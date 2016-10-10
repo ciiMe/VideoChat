@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/2010/manifest" xmlns:m2="http://schemas.microsoft.com/appx/2013/manifest">
-  <Identity Name="VideoHost" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" Version="1.1.0.14" />
+  <Identity Name="VideoHost" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" Version="1.2.0.15" />
   <Properties>
     <DisplayName>VideoHost</DisplayName>
     <PublisherDisplayName>Microsoft Corporation</PublisherDisplayName>
@@ -32,6 +32,14 @@
         <m2:SplashScreen Image="Assets\splash-Windows-sdk.png" BackgroundColor="#00b2f0" />
         <m2:ApplicationView MinWidth="width320" />
       </m2:VisualElements>
+      <Extensions>
+        <Extension Category="windows.protocol">
+          <Protocol Name="zonekeyvideohost">
+            <Logo>Assets\tile-sdk.png</Logo>
+            <DisplayName>Start the ZongKey VideoHost App.</DisplayName>
+          </Protocol>
+        </Extension>
+      </Extensions>
     </Application>
   </Applications>
 </Package>
