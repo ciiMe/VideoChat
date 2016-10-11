@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/2010/manifest" xmlns:m2="http://schemas.microsoft.com/appx/2013/manifest">
-  <Identity Name="PhotoCapture" Publisher="CN=Chaozong Sun" Version="1.4.0.13" />
+  <Identity Name="PhotoCapture" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" Version="1.5.0.16" />
   <Properties>
     <DisplayName>PhotoCapture</DisplayName>
     <PublisherDisplayName>Chaozong Sun</PublisherDisplayName>

@@ -25,9 +25,17 @@
                 <ColumnDefinition Width="Auto"></ColumnDefinition>
                 <ColumnDefinition Width="Auto"></ColumnDefinition>
             </Grid.ColumnDefinitions>
-            <ComboBox Grid.Column="0" x:Name="cmbRatio" Width="200" Visibility="Collapsed" ></ComboBox>
-            <ComboBox Grid.Column="1" x:Name="cmbSize" Width="200" Margin="10,0,0,0"></ComboBox>
-            <ToggleButton Grid.Column="2" x:Name="tAllotCut" Margin="10,0,0,0" Visibility="Collapsed">Allow Cut</ToggleButton>
+            <ComboBox Grid.Column="0" x:Name="cmbSize" Width="200" Margin="10,10,0,10"></ComboBox>
+            <Grid Grid.Column="1"> 
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+
+                <ToggleButton Grid.Column="0" x:Name="tAllotCut" Margin="10,0,0,0" Click="tAllotCut_Clicked"  >Allow Cut</ToggleButton>
+                <ComboBox Grid.Column="1" x:Name="cmbRatio" Width="200" Margin="10,10,0,10" Visibility="Collapsed" ></ComboBox>
+            </Grid>
             <Button Grid.Column="3" x:Name="CaptureButton" Content="Capture Photo" Margin="10,0,0,0" Click="CapturePhoto_Click"/>
         </Grid>
     </Grid>

@@ -72,17 +72,31 @@ namespace PhotoCapture
             }
         }
 
+        protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
+        {
+            base.OnNavigatingFrom(e);
+        }
+
         private async void CapturePhoto_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 NotifyUser("Capture Starting...", NotifyType.StatusMessage);
-
-                CameraCaptureUI dialog = new CameraCaptureUI();
+                var dialog = new CameraCaptureUI();
                 dialog.PhotoSettings.MaxResolution = _listedSize[cmbSize.SelectedIndex];
                 dialog.PhotoSettings.Format = CameraCaptureUIPhotoFormat.Jpeg;
                 dialog.PhotoSettings.AllowCropping = false;
-                
+
+                if (tAllotCut.IsChecked.Value)
+                {
+                    dialog.PhotoSettings.AllowCropping = true;
+                    dialog.PhotoSettings.CroppedAspectRatio = _listedRatio[cmbRatio.SelectedIndex];
+                }
+                else
+                {
+                    dialog.PhotoSettings.AllowCropping = false;
+                }
+
                 //dialog.PhotoSettings.CroppedAspectRatio = _listedRatio[cmbRatio.SelectedIndex];
 
                 StorageFile file = await dialog.CaptureFileAsync(CameraCaptureUIMode.Photo);
@@ -183,6 +197,28 @@ namespace PhotoCapture
             else
             {
                 StatusBorder.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void tAllotCut_PointerPressed(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            cmbRatio.Visibility = Visibility.Visible;
+        }
+
+        private void tAllotCut_PointerReleased(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            cmbRatio.Visibility = Visibility.Collapsed;
+        }
+
+        private void tAllotCut_Clicked(object sender, RoutedEventArgs e)
+        {
+            if (tAllotCut.IsChecked.Value)
+            {
+                cmbRatio.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                cmbRatio.Visibility = Visibility.Collapsed;
             }
         }
     }
