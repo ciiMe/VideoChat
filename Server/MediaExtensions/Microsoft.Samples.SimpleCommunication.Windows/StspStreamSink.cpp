@@ -282,31 +282,35 @@ IFACEMETHODIMP CStreamSink::ProcessSample(IMFSample *pSample)
         hr = ValidateOperation(OpProcessSample);
     }
 
-    if (SUCCEEDED(hr) && _fWaitingForFirstSample && !_Connected)
-    {
-        _spFirstVideoSample = pSample;
-        _fWaitingForFirstSample = false;
+	if (SUCCEEDED(hr))
+	{
+		if (  _fWaitingForFirstSample && !_Connected)
+		{
+			_spFirstVideoSample = pSample;
+			_fWaitingForFirstSample = false;
 
-        hr = QueueEvent(MEStreamSinkRequestSample, GUID_NULL, hr, nullptr);
-    }
-    else if (SUCCEEDED(hr))
-    {
-        // Add the sample to the sample queue.
-        if (SUCCEEDED(hr))
-        {
-            hr = _SampleQueue.InsertBack(pSample);
-        }
+			hr = QueueEvent(MEStreamSinkRequestSample, GUID_NULL, hr, nullptr);
+		}
+		else 
+		{
+			// Add the sample to the sample queue.
+			if (SUCCEEDED(hr))
+			{
+				hr = _SampleQueue.InsertBack(pSample);
+			}
 
-        // Unless we are paused, start an async operation to dispatch the next sample.
-        if (SUCCEEDED(hr))
-        {
-            if (_state != State_Paused)
-            {
-                // Queue the operation.
-                hr = QueueAsyncOperation(OpProcessSample);
-            }
-        }
-    }
+			// Unless we are paused, start an async operation to dispatch the next sample.
+			if (SUCCEEDED(hr))
+			{
+				if (_state != State_Paused)
+				{
+					// Queue the operation.
+					hr = QueueAsyncOperation(OpProcessSample);
+				}
+			}
+		}
+	}
+
 
     TRACEHR_RET(hr);
 }
@@ -875,7 +879,6 @@ void CStreamSink::DispatchProcessSample(CAsyncOperation *pOp)
 bool CStreamSink::DropSamplesFromQueue()
 {
     ProcessSamplesFromQueue(true);
-
     return true;
 }
 

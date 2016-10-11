@@ -1,10 +1,3 @@
-//// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
-//// ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
-//// THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
-//// PARTICULAR PURPOSE.
-////
-//// Copyright (c) Microsoft Corporation. All rights reserved
-
 #pragma once
 #include <CritSec.h>
 #include <AsyncCB.h>
@@ -12,177 +5,178 @@
 #include <StspNetwork.h>
 #include <StspDefs.h>
 
-namespace Microsoft { namespace Samples { namespace SimpleCommunication {
+namespace Microsoft {
+	namespace Samples {
+		namespace SimpleCommunication {
 
-class CMediaSink;
+			class CMediaSink;
 
-class CStreamSink : public IMFStreamSink, public IMFMediaTypeHandler
-{
-public:
-    // State enum: Defines the current state of the stream.
-    enum State
-    {
-        State_TypeNotSet = 0,    // No media type is set
-        State_Ready,             // Media type is set, Start has never been called.
-        State_Started,
-        State_Stopped,
-        State_Paused,
-        State_Count              // Number of states
-    };
+			class CStreamSink : public IMFStreamSink, public IMFMediaTypeHandler
+			{
+			public:
+				// State enum: Defines the current state of the stream.
+				enum State
+				{
+					State_TypeNotSet = 0,    // No media type is set
+					State_Ready,             // Media type is set, Start has never been called.
+					State_Started,
+					State_Stopped,
+					State_Paused,
+					State_Count              // Number of states
+				};
 
-    // StreamOperation: Defines various operations that can be performed on the stream.
-    enum StreamOperation
-    {
-        OpSetMediaType = 0,
-        OpStart,
-        OpRestart,
-        OpPause,
-        OpStop,
-        OpProcessSample,
-        OpPlaceMarker,
+				// StreamOperation: Defines various operations that can be performed on the stream.
+				enum StreamOperation
+				{
+					OpSetMediaType = 0,
+					OpStart,
+					OpRestart,
+					OpPause,
+					OpStop,
+					OpProcessSample,
+					OpPlaceMarker,
 
-        Op_Count                // Number of operations
-    };
+					Op_Count                // Number of operations
+				};
 
-    // CAsyncOperation:
-    // Used to queue asynchronous operations. When we call MFPutWorkItem, we use this
-    // object for the callback state (pState). Then, when the callback is invoked,
-    // we can use the object to determine which asynchronous operation to perform.
+				// CAsyncOperation:
+				// Used to queue asynchronous operations. When we call MFPutWorkItem, we use this
+				// object for the callback state (pState). Then, when the callback is invoked,
+				// we can use the object to determine which asynchronous operation to perform.
 
-    class CAsyncOperation : public IUnknown
-    {
-    public:
-        CAsyncOperation(StreamOperation op);
+				class CAsyncOperation : public IUnknown
+				{
+				public:
+					CAsyncOperation(StreamOperation op);
 
-        StreamOperation m_op;   // The operation to perform.
+					StreamOperation m_op;   // The operation to perform.
 
-        // IUnknown methods.
-        STDMETHODIMP QueryInterface(REFIID iid, void **ppv);
-        STDMETHODIMP_(ULONG) AddRef();
-        STDMETHODIMP_(ULONG) Release();
+					// IUnknown methods.
+					STDMETHODIMP QueryInterface(REFIID iid, void **ppv);
+					STDMETHODIMP_(ULONG) AddRef();
+					STDMETHODIMP_(ULONG) Release();
 
-    private:
-        long    _cRef;
-        virtual ~CAsyncOperation();
-    };
+				private:
+					long    _cRef;
+					virtual ~CAsyncOperation();
+				};
 
-public:
-    // IUnknown
-    IFACEMETHOD (QueryInterface) (REFIID riid, void **ppv);
-    IFACEMETHOD_(ULONG, AddRef) ();
-    IFACEMETHOD_(ULONG, Release) ();
+			public:
+				// IUnknown
+				IFACEMETHOD(QueryInterface) (REFIID riid, void **ppv);
+				IFACEMETHOD_(ULONG, AddRef) ();
+				IFACEMETHOD_(ULONG, Release) ();
 
-    // IMFMediaEventGenerator
-    IFACEMETHOD (BeginGetEvent)(IMFAsyncCallback *pCallback,IUnknown *punkState);
-    IFACEMETHOD (EndGetEvent) (IMFAsyncResult *pResult, IMFMediaEvent **ppEvent);
-    IFACEMETHOD (GetEvent) (DWORD dwFlags, IMFMediaEvent **ppEvent);
-    IFACEMETHOD (QueueEvent) (MediaEventType met, REFGUID guidExtendedType, HRESULT hrStatus, PROPVARIANT const *pvValue);
+				// IMFMediaEventGenerator
+				IFACEMETHOD(BeginGetEvent)(IMFAsyncCallback *pCallback, IUnknown *punkState);
+				IFACEMETHOD(EndGetEvent) (IMFAsyncResult *pResult, IMFMediaEvent **ppEvent);
+				IFACEMETHOD(GetEvent) (DWORD dwFlags, IMFMediaEvent **ppEvent);
+				IFACEMETHOD(QueueEvent) (MediaEventType met, REFGUID guidExtendedType, HRESULT hrStatus, PROPVARIANT const *pvValue);
 
-    // IMFStreamSink
-    IFACEMETHOD (GetMediaSink) (IMFMediaSink **ppMediaSink);
-    IFACEMETHOD (GetIdentifier) (DWORD *pdwIdentifier);
-    IFACEMETHOD (GetMediaTypeHandler) (IMFMediaTypeHandler **ppHandler);
-    IFACEMETHOD (ProcessSample) (IMFSample *pSample);
+				// IMFStreamSink
+				IFACEMETHOD(GetMediaSink) (IMFMediaSink **ppMediaSink);
+				IFACEMETHOD(GetIdentifier) (DWORD *pdwIdentifier);
+				IFACEMETHOD(GetMediaTypeHandler) (IMFMediaTypeHandler **ppHandler);
+				IFACEMETHOD(ProcessSample) (IMFSample *pSample);
+				/* Parameters: [in] [in] [in]*/
+				IFACEMETHOD(PlaceMarker) (MFSTREAMSINK_MARKER_TYPE eMarkerType, PROPVARIANT const *pvarMarkerValue, PROPVARIANT const *pvarContextValue);
 
-    IFACEMETHOD (PlaceMarker) (
-        /* [in] */ MFSTREAMSINK_MARKER_TYPE eMarkerType,
-        /* [in] */ PROPVARIANT const *pvarMarkerValue,
-        /* [in] */ PROPVARIANT const *pvarContextValue);
+				IFACEMETHOD(Flush)();
 
-    IFACEMETHOD (Flush)();
+				// IMFMediaTypeHandler
+				IFACEMETHOD(IsMediaTypeSupported) (IMFMediaType *pMediaType, IMFMediaType **ppMediaType);
+				IFACEMETHOD(GetMediaTypeCount) (DWORD *pdwTypeCount);
+				IFACEMETHOD(GetMediaTypeByIndex) (DWORD dwIndex, IMFMediaType **ppType);
+				IFACEMETHOD(SetCurrentMediaType) (IMFMediaType *pMediaType);
+				IFACEMETHOD(GetCurrentMediaType) (IMFMediaType **ppMediaType);
+				IFACEMETHOD(GetMajorType) (GUID *pguidMajorType);
 
-    // IMFMediaTypeHandler
-    IFACEMETHOD (IsMediaTypeSupported) (IMFMediaType *pMediaType, IMFMediaType **ppMediaType);
-    IFACEMETHOD (GetMediaTypeCount) (DWORD *pdwTypeCount);
-    IFACEMETHOD (GetMediaTypeByIndex) (DWORD dwIndex, IMFMediaType **ppType);
-    IFACEMETHOD (SetCurrentMediaType) (IMFMediaType *pMediaType);
-    IFACEMETHOD (GetCurrentMediaType) (IMFMediaType **ppMediaType);
-    IFACEMETHOD (GetMajorType) (GUID *pguidMajorType);
-
-    // ValidStateMatrix: Defines a look-up table that says which operations
-    // are valid from which states.
-    static BOOL ValidStateMatrix[State_Count][Op_Count];
-
-
-    CStreamSink(DWORD dwIdentifier);
-    virtual ~CStreamSink();
-
-    HRESULT Initialize(CMediaSink *pParent, Network::INetworkChannel ^sender);
-
-    HRESULT CheckShutdown() const
-    {
-        if (_IsShutdown)
-        {
-            return MF_E_SHUTDOWN;
-        }
-        else
-        {
-            return S_OK;
-        }
-    }
+				// ValidStateMatrix: Defines a look-up table that says which operations
+				// are valid from which states.
+				static BOOL ValidStateMatrix[State_Count][Op_Count];
 
 
-    HRESULT     Start(MFTIME start);
-    HRESULT     Restart();
-    HRESULT     Stop();
-    HRESULT     Pause();
-    HRESULT     Shutdown();
-    bool        IsVideo() const {return _fIsVideo;}
-    HRESULT     SetConnected(bool fConnected, LONGLONG llCurrentTime);
-    ComPtr<Network::IMediaBufferWrapper>  FillStreamDescription(IMFMediaType *pMediaType, StspStreamDescription *pStreamDescription);
+				CStreamSink(DWORD dwIdentifier);
+				virtual ~CStreamSink();
 
-private:
-    HRESULT     ValidateOperation(StreamOperation op);
+				HRESULT Initialize(CMediaSink *pParent, Network::INetworkChannel ^sender);
 
-    HRESULT     QueueAsyncOperation(StreamOperation op);
+				HRESULT CheckShutdown() const
+				{
+					if (_IsShutdown)
+					{
+						return MF_E_SHUTDOWN;
+					}
+					else
+					{
+						return S_OK;
+					}
+				}
 
-    HRESULT     OnDispatchWorkItem(IMFAsyncResult *pAsyncResult);
-    void        DispatchProcessSample(CAsyncOperation *pOp);
 
-    bool        DropSamplesFromQueue();
-    bool        SendSampleFromQueue();
-    bool        ProcessSamplesFromQueue(bool fFlush);
-    void        ProcessFormatChange(IMFMediaType *pMediaType);
+				HRESULT     Start(MFTIME start);
+				HRESULT     Restart();
+				HRESULT     Stop();
+				HRESULT     Pause();
+				HRESULT     Shutdown();
+				bool        IsVideo() const { return _fIsVideo; }
+				HRESULT     SetConnected(bool fConnected, LONGLONG llCurrentTime);
+				ComPtr<Network::IMediaBufferWrapper>  FillStreamDescription(IMFMediaType *pMediaType, StspStreamDescription *pStreamDescription);
 
-    ComPtr<Network::IBufferPacket> PrepareSample(IMFSample *pSample, bool fForce);
-    ComPtr<Network::IBufferPacket> PrepareFormatChange(IMFMediaType *pMediaType);
+			private:
+				HRESULT     ValidateOperation(StreamOperation op);
 
-    HRESULT     AppendParameterSets(IMFSample *pCopyFrom, Network::IBufferPacket *pPacket);
-    void        HandleError(HRESULT hr);
+				HRESULT     QueueAsyncOperation(StreamOperation op);
 
-private:
-    long                        _cRef;                      // reference count
-    CritSec                     _critSec;                   // critical section for thread safety
+				HRESULT     OnDispatchWorkItem(IMFAsyncResult *pAsyncResult);
+				void        DispatchProcessSample(CAsyncOperation *pOp);
 
-    DWORD                       _dwIdentifier;
-    State                       _state;
-    bool                        _IsShutdown;                // Flag to indicate if Shutdown() method was called.
-    bool                        _Connected;
-    bool                        _fGetStartTimeFromSample;
-    bool                        _fIsVideo;
-    bool                        _fWaitingForFirstSample;
-    bool                        _fFirstSampleAfterConnect;
-    GUID                        _guiCurrentSubtype;
+				bool        DropSamplesFromQueue();
+				bool        SendSampleFromQueue();
+				bool        ProcessSamplesFromQueue(bool fFlush);
+				void        ProcessFormatChange(IMFMediaType *pMediaType);
 
-    DWORD                       _WorkQueueId;               // ID of the work queue for asynchronous operations.
-    MFTIME                      _StartTime;                 // Presentation time when the clock started.
+				ComPtr<Network::IBufferPacket> PrepareSample(IMFSample *pSample, bool fForce);
+				ComPtr<Network::IBufferPacket> PrepareFormatChange(IMFMediaType *pMediaType);
 
-    ComPtr<IMFMediaSink>        _spSink;                    // Parent media sink
-    CMediaSink                  *_pParent;
+				HRESULT     AppendParameterSets(IMFSample *pCopyFrom, Network::IBufferPacket *pPacket);
+				void        HandleError(HRESULT hr);
 
-    ComPtr<IMFMediaEventQueue>  _spEventQueue;              // Event queue
-    ComPtr<IMFByteStream>       _spByteStream;              // Bytestream where we write the data.
-    ComPtr<IMFMediaType>        _spCurrentType;
-    ComPtr<IMFSample>           _spFirstVideoSample;
+			private:
+				long                        _cRef;                      // reference count
+				CritSec                     _critSec;                   // critical section for thread safety
 
-    ComPtrList<IUnknown>        _SampleQueue;               // Queue to hold samples and markers.
-                                                            // Applies to: ProcessSample, PlaceMarker
+				DWORD                       _dwIdentifier;
+				State                       _state;
+				bool                        _IsShutdown;                // Flag to indicate if Shutdown() method was called.
+				bool                        _Connected;
+				bool                        _fGetStartTimeFromSample;
+				bool                        _fIsVideo;
+				bool                        _fWaitingForFirstSample;
+				bool                        _fFirstSampleAfterConnect;
+				GUID                        _guiCurrentSubtype;
 
-    Network::INetworkChannel^    _networkSender;
+				DWORD                       _WorkQueueId;               // ID of the work queue for asynchronous operations.
+				MFTIME                      _StartTime;                 // Presentation time when the clock started.
 
-    AsyncCallback<CStreamSink>  _WorkQueueCB;              // Callback for the work queue.
+				ComPtr<IMFMediaSink>        _spSink;                    // Parent media sink
+				CMediaSink                  *_pParent;
 
-    ComPtr<IUnknown>            _spFTM;
-};
+				ComPtr<IMFMediaEventQueue>  _spEventQueue;              // Event queue
+				ComPtr<IMFByteStream>       _spByteStream;              // Bytestream where we write the data.
+				ComPtr<IMFMediaType>        _spCurrentType;
+				ComPtr<IMFSample>           _spFirstVideoSample;
 
-}}} // namespace Microsoft::Samples::SimpleCommunication
+				ComPtrList<IUnknown>        _SampleQueue;               // Queue to hold samples and markers.
+																		// Applies to: ProcessSample, PlaceMarker
+
+				Network::INetworkChannel^    _networkSender;
+
+				AsyncCallback<CStreamSink>  _WorkQueueCB;              // Callback for the work queue.
+
+				ComPtr<IUnknown>            _spFTM;
+			};
+
+		}
+	}
+}
