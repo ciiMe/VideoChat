@@ -37,7 +37,7 @@ namespace CameraServer
                 IPEndPoint clientIp = (IPEndPoint)client.RemoteEndPoint;
                 Console.WriteLine("Accept connection :" + clientIp.Address);
 
-                fs = File.OpenWrite("Data" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".data");
+                fs = File.OpenWrite("Data" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".jpg");
                 ReadConnectionData(client, fs);
 
                 Console.WriteLine("Data Handle complete :" + clientIp.Address);
