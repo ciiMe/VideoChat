@@ -1,0 +1,188 @@
+The purpose of this solution is to provide a generic framework to make writing MFTs (Media Foundation Transforms) easier.  If you don't know what 
+an MFT is, visit https://msdn.microsoft.com/en-us/library/windows/desktop/ms703138%28v=vs.85%29.aspx for more info.
+
+In particular, this framework helps create synchronous MFTs that have exactly 1 input and 1 output stream.  The template for synchronous MFTs may eventually be removed (depending on feedback), so new MFTs should plan on using the asynchronous template instead.
+
+For help creating asynchronous MFTs, see HowToAsync.txt.
+
+This doc has 5 sections:
+
+1) Creating a new MFT
+2) Basics for writing an MFT.
+3) Some of the extras for advanced MFTs.
+4) Distributing/using the MFT.
+5) FAQ.
+
+Section 1 - Creating a new project
+
+The simplest way to create your own MFT is to take one of the existing samples and modify it to fit your own needs.  If you do that, make sure you:
+
+- Change the CLSID on the class (very important!).
+- Change the class name (yes, it matters).
+- Modify the input/output types supported or the OnProcessOutput code to fit your needs (see below for discussion).
+
+Or you can create a new project from scratch:
+
+Create a class derived from MFTBase.  It should have these attributes:
+
+   [ComVisible(true),
+   Guid("your guid goes here"),
+   ClassInterface(ClassInterfaceType.None)]
+   public class MyClass : MFTBase
+
+Generate your own unique Guid (for example using Tools/Create GUID in Visual Studio).
+
+If you want your MFT registered with MFTRegister (which is NOT a requirement, see Distributing/using the MFT), then create a method with the ComRegisterFunctionAttribute.  If your object is intended to be registered with COM (also not a requirement), set the build property for "Register for COM interop."  This may require running Visual Studio as an administrator.
+
+Create a public constructor for your class.  This method must take zero arguments, and invoke the base constructor.
+
+    public MyClass()
+        : base()
+    { }
+
+Section 2 - Basics for writing an MFT.
+
+There are two core parts to writing an MFT:
+
+a) Specifying the input and output types you support.
+b) Process the input samples into the output samples.
+
+Section 1a - Specifying the input and output types.
+
+There are (basically) 4 methods that control validating and enumerating your input & output types (OnCheckInputType, OnCheckOutputType, OnEnumInputTypes, & OnEnumOutputTypes).  You may not actually have to write all 4, since there are default implementations that may already do what you want.  You only need to override if the default is not correct for your needs.  Further, there are a number of helper functions in the framework to simplify writing these (sometimes down to a single statement).  Some common scenarios to illustrate how this might work:
+
+1&2) Like the WriteText example, you could 
+
+- Support one partial input type (MFMediaType.Video + MFMediaType.RGB32).
+- Require that a full input media type be sent to IMFTransform::SetInputType (and approved by OnCheckInputType) before any output type can be set.
+- Limit the output type to always be exactly the same as the input type.
+
+Or, like the Grayscale example, you can 
+
+- Support multiple partial input types (MFMediaType.Video + MFMediaType.NV12, MFMediaType.Video + MFMediaType.YUY2, MFMediaType.Video + MFMediaType.UYVY).
+- Require that a full input media type be sent to IMFTransform::SetInputType (and approved by OnCheckInputType) before any output type can be set.
+- Limit the output type to always be exactly the same as the input type.
+
+For these two cases:
+
+- Create a GUID array that contains the subtype(s) you support.
+- In OnCheckInputType, use CheckMediaType() and pass the GUID array.
+- In OnEnumInputTypes use CreatePartialType() and pass the GUID array.
+- Use the default implementation for OnCheckOutputType and OnEnumOutputTypes.
+
+If you support multiple input types, list them in the preferred order, where 'preferred' means whatever the MFT writer wants it to mean: Performance, output size, colorspace quality, etc.
+
+3) Like the TypeConverter example, you can 
+
+- Support one partial input type (MFMediaType.Video + MFMediaType.YUY2).
+- Require that a full input media type be sent to IMFTransform::SetInputType (and approved by OnCheckInputType) before any output type can be set.
+- Limit the output type to one fully-populated output type that is calculated based on the input type.
+
+In this case:
+
+- Create a GUID array that contains a single entry.
+- In OnCheckInputType, use CheckMediaType and pass the GUID array.
+- In OnEnumInputTypes use CreatePartialType and pass the GUID array.
+- Use the default implementation for OnCheckOutputType and OnEnumOutputTypes, but write your own implementation of CreateOutputFromInput (which is used by the default implementations in both of those routines).
+
+CreateOutputFromInput can either make minor modifications to the input type, or create an entirely new type.
+
+4) Like none of the existing examples, you might be using complete media types for input types, or have multiple output types that are completely unrelated to the input types (for example some type of decoder).
+
+Instead of using any of the helpers, you can just override each of the 4 methods to return whatever values you need.
+
+Section 1b - Process the input samples into the output samples.
+
+Before you start writing OnProcessOutput, there are two other simple routines you need to write first: OnGetInputStreamInfo & OnGetOutputStreamInfo.  These routines deal with setting flags that describe how you will be working with input and output samples.  See MSDN for details about MFT_INPUT_STREAM_INFO & MFT_OUTPUT_STREAM_INFO.
+
+Warning: While in theory you can do 'in-place' processing, not all synchronous clients support this.  
+
+Unlike the Async template, the MFTBase template works well with allowing the client to provide the output samples.  The Grayscale sample works that way.
+
+When your OnProcessOutput routine is called, you will be passed the output buffer to populate.  The input sample is in the property InputSample.
+
+After your MFT has generated all the output from the input sample, OnProcessOutput should set InputSample to null to request more input.
+
+2) Some of the extras for advanced MFTs.
+
+Here are all the virtuals that your class may override:
+
+    abstract protected int OnCheckInputType(IMFMediaType pmt);
+    virtual protected int OnCheckOutputType(IMFMediaType pmt)
+
+    virtual protected int OnEnumInputTypes(int dwTypeIndex, out IMFMediaType pInputType)
+    virtual protected int OnEnumOutputTypes(int dwTypeIndex, out IMFMediaType pOutputType)
+
+    abstract protected void OnGetInputStreamInfo(ref MFTInputStreamInfo pStreamInfo);
+    abstract protected void OnGetOutputStreamInfo(ref MFTOutputStreamInfo pStreamInfo);
+
+    virtual protected IMFMediaType CreateOutputFromInput()
+
+    abstract protected int OnProcessOutput(ref MFTOutputDataBuffer pOutputSamples);
+
+    virtual protected void OnSetInputType()
+    virtual protected void OnSetOutputType()
+    virtual protected int OnProcessInput()
+    virtual protected void OnReset()
+
+The first 8 were discussed above.
+
+OnSetInputType is the best place to cache settings from the input type, plan on which processing routines you are going to call, and generally get set up to do things.
+OnProcessInput provides an opportunity to validate input samples, but the expectation is that most of the processing will occur after the client provides the output buffer in OnProcessOutput (see GrayscaleEx for an exception).
+
+There are a bunch of utility functions that might be useful.  You will see most of these being used somewhere in the samples.  Their function should be clear from the name, but if not, there are comments in the source, and of course you have the full source code.
+
+Debug writers.  TraceAttributes is a great tool for examining IMFMediaTypes and IMFSamples.
+    protected static void TraceAttributes(IMFAttributes ia)
+    protected static void Trace(string s)
+
+Described above:
+    protected static int CheckMediaType(IMFMediaType pmt, Guid gMajorType, Guid[] gSubTypes)
+    protected static int CreatePartialType(int dwTypeIndex, Guid gMajorType, Guid[] gSubTypes, out IMFMediaType ppmt)
+
+Duh:
+    protected static int IsIdentical(IMFMediaType a, IMFMediaType b)
+    protected static IMFMediaType CloneMediaType(IMFMediaType inType)
+
+Accessors:
+        protected IMFMediaType InputType
+        protected IMFMediaType OutputType
+		protected IMFSample InputSample
+
+Section 4 - Distributing/using the MFT.
+
+The code in this project is public domain, so there are no legal requirements involved in using it (with the exceptions of the LGPL or BSD for MediaFoundation.dll).  While it would be nice to have a mention in your docs and/or an emailed "thanks", even more useful would be some contribution to make the project better.  Bug fixes, doc improvements, additional samples, etc to make things better/easier for the next guy, the way this project has made things easier for you.
+
+What kind of installation you need to do for your MFT depends on how you are going to use it.  There are 4 general cases:
+
+1) Your MFT can be installed as a regular COM object, and created via CoCreateInstance by anyone who knows its CLSID.  This requires you to register your dll using the regasm tool (possibly twice if you support both x86 and x64).
+2) Your MFT can be registered with both COM and MediaFoundation.  It will be discoverable by any application using MFTEnum/MFTEnumEx, and may be used automatically by some MF functions.  This requires using MFTRegister, which is performed for you automatically if the OnGetCategory function is implemented and returns a non-Empty value.
+
+There is a third case that might be useful for some situations, which affects some of the discussion above.
+
+3) You can actually compile your MFT right into your executable (instead of producing a DLL), and create an instance using 'new' (ie MyMft m = new MyMft()).  This instance can be passed to methods such as IMFMediaEngineEx::InsertVideoEffect or added to a topology node using SetObject().  This approach requires no COM registration, or registration with MFTRegister.
+
+4) You can use Register-free COM to be able to run your COM objects WITHOUT requiring admin rights to install them.  See google.
+
+Section 5 - FAQ:
+
+Q: Can a project be "Any CPU" instead of having both x86 and x64?
+A: It is possible to create a project using "Any CPU."  None of the samples do this to avoid confusion over the fact that when you build the project in VS, it will only do 1 regasm (x86).  If you modify your build settings to run both regasms, then you only need 1 configuration.
+
+Q: How is exception handling, umm, handled?
+A: All the IMFTransform interface methods are wrapped with try/catch to turn exceptions into HRESULTs.  If the MFT's caller is c/c++, that would be done automatically.  However if the caller is c#, the exception propagates up into the caller's code (which is probably not what we want).
+
+Since the interface methods use try/catch, you can throw exceptions from your methods.  However, exceptions can really ruin performance.  So you should only do this for situations that you never expect to actually happen.  Especially since returning non-zero values will probably end up shutting down the stream.
+
+Q: Using SafeRelease/Marshal.ReleaseComObject in the MFT.
+A: This is a huge pain when working with COM objects in c# code.  Normally c# code release objects "when it's convenient."  However, c# has no visibility to how much memory is used by a COM object, so it can't see that just a few seconds worth of IMFSamples can run a 32bit app out of memory.  On the other hand, releasing objects allocated by other c# components can cause them to crash.
+
+Generally speaking, any COM objects you create in your code (for example getting the IMFMediaBuffer from IMFSample::ConvertToContiguousBuffer) should be released when you are done with it (consider using 'try/finally').  Hopefully this will always be safe, since the consequences of not doing it are huge memory usage.
+
+There are a number of places in the framework where it seems like it would make sense to release the objects, but I don't.  I have often left the SafeRelease call in place but commented out to show that I considered using it, but decided I couldn't.
+
+Q: Sometimes my program seems to use a lot of memory, but it doesn't seem to be leaking?
+A: Having the 'Trace' call at the top of each entry point makes debugging easier, and provides insight into how the client works.  However, it really messes up performance (among other things).  If you are seeing odd behavior, try commenting out the Debug.WriteLine in Trace.
+
+Q: What if I want to support additional interfaces (either MF interfaces or a custom interface)?
+A: If you need your MFT to support additional interfaces, simply add them to the class declaration of your derived class, along with the implementation.
