@@ -42,6 +42,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <UseVSHostingProcess>false</UseVSHostingProcess>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
@@ -50,6 +51,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -92,28 +94,31 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Form1.cs">
+    <Compile Include="INetworkStreamProvider.cs" />
+    <Compile Include="IPlayerUI.cs" />
+    <Compile Include="MediaBase.cs" />
+    <Compile Include="MsgDialog.cs" />
+    <Compile Include="DialogInvoker.cs" />
+    <Compile Include="frmPlayerContent.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Form1.Designer.cs">
-      <DependentUpon>Form1.cs</DependentUpon>
+    <Compile Include="frmPlayerContent.Designer.cs">
+      <DependentUpon>frmPlayerContent.cs</DependentUpon>
     </Compile>
-    <Compile Include="Form2.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Form2.Designer.cs">
-      <DependentUpon>Form2.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Player.cs" />
+    <Compile Include="BasePlayer.cs" />
+    <Compile Include="NetworkSource.cs" />
+    <Compile Include="Network\BufferWrapper.cs" />
+    <Compile Include="Network\ConstParameters.cs" />
+    <Compile Include="Network\INetworkClient.cs" />
+    <Compile Include="Network\NetworkClient.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="Form1.resx">
+    <Compile Include="SourceState.cs" />
+    <Compile Include="Stream\INetworkStreamAdapter.cs" />
+    <Compile Include="Stream\NetworkStreamAdapter.cs" />
+    <EmbeddedResource Include="frmPlayerContent.resx">
       <SubType>Designer</SubType>
-      <DependentUpon>Form1.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Form2.resx">
-      <SubType>Designer</SubType>
-      <DependentUpon>Form2.cs</DependentUpon>
+      <DependentUpon>frmPlayerContent.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -152,6 +157,12 @@
       <ProductName>Windows Installer 3.1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MediaExtensions\VideoGuest.Windows.vcxproj">
+      <Project>{c9492b18-ecb3-4e55-81fe-f0a6e8ee1a66}</Project>
+      <Name>VideoGuest.window</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
