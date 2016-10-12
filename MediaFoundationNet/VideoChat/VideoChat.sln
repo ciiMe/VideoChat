@@ -1,7 +1,6 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MF_BasicPlayback-2010", "MF_BasicPlayback-2010.csproj", "{661ABF17-9CAD-46EA-B852-5A32CDF0C415}"
+﻿Microsoft Visual Studio Solution File, Format Version 14.00
+# Visual Studio 2015
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoPlayer", "Player\VideoPlayer.csproj", "{661ABF17-9CAD-46EA-B852-5A32CDF0C415}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

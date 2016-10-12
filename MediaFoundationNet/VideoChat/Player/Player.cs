@@ -1,10 +1,3 @@
-/****************************************************************************
-While the underlying library is covered by LGPL or BSD, this sample is released
-as public domain.  It is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.
-*****************************************************************************/
-
 using System;
 using System.Threading;
 using System.Diagnostics;
@@ -19,8 +12,7 @@ class CPlayer : COMBase, IMFAsyncCallback
     #region externs
 
     [DllImport("user32", CharSet = CharSet.Auto)]
-    private extern static int PostMessage(
-        IntPtr handle, int msg, IntPtr wParam, IntPtr lParam);
+    private extern static int PostMessage(IntPtr handle, int msg, IntPtr wParam, IntPtr lParam);
 
     #endregion
 
@@ -536,11 +528,7 @@ class CPlayer : COMBase, IMFAsyncCallback
         }
     }
 
-    protected void AddBranchToPartialTopology(
-        IMFTopology pTopology,
-        IMFPresentationDescriptor pSourcePD,
-        int iStream
-        )
+    protected void AddBranchToPartialTopology(IMFTopology pTopology, IMFPresentationDescriptor pSourcePD, int iStream)
     {
         MFError throwonhr;
 
@@ -585,11 +573,7 @@ class CPlayer : COMBase, IMFAsyncCallback
         }
     }
 
-    protected void CreateSourceStreamNode(
-        IMFPresentationDescriptor pSourcePD,
-        IMFStreamDescriptor pSourceSD,
-        out IMFTopologyNode ppNode
-        )
+    protected void CreateSourceStreamNode(IMFPresentationDescriptor pSourcePD, IMFStreamDescriptor pSourceSD, out IMFTopologyNode ppNode)
     {
         Debug.Assert(m_pSource != null);
 
@@ -621,10 +605,7 @@ class CPlayer : COMBase, IMFAsyncCallback
         }
     }
 
-    protected void CreateOutputNode(
-        IMFStreamDescriptor pSourceSD,
-        out IMFTopologyNode ppNode
-        )
+    protected void CreateOutputNode(IMFStreamDescriptor pSourceSD, out IMFTopologyNode ppNode)
     {
         IMFTopologyNode pNode = null;
         IMFMediaTypeHandler pHandler = null;
@@ -729,7 +710,7 @@ class CPlayer : COMBase, IMFAsyncCallback
         {
             StartPlayback();
         }
-        catch(Exception ce)
+        catch (Exception ce)
         {
             hr = (HResult)Marshal.GetHRForException(ce);
             NotifyError(hr);
@@ -777,9 +758,9 @@ class CPlayer : COMBase, IMFAsyncCallback
 
     #region Member Variables
 
-    protected IMFMediaSession           m_pSession;
-    protected IMFMediaSource            m_pSource;
-    protected IMFVideoDisplayControl    m_pVideoDisplay;
+    protected IMFMediaSession m_pSession;
+    protected IMFMediaSource m_pSource;
+    protected IMFVideoDisplayControl m_pVideoDisplay;
 
     protected IntPtr m_hwndVideo;       // Video window.
     protected IntPtr m_hwndEvent;       // App window to receive events.

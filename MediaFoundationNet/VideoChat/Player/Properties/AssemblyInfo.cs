@@ -11,15 +11,15 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 
-[assembly: AssemblyTitle("MF_BasicPlayback")]
-[assembly: AssemblyDescription(".NET sample using MediaFoundation.  See http://mfnet.sourceforge.net/")]
+[assembly: AssemblyTitle("VideoPlayer")]
+[assembly: AssemblyDescription("Play media stram received from network.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: Guid("1b318f25-650a-4b63-b9fc-1029f0ea35e9")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 #if DEBUG
-[assembly: AssemblyProduct("Debug Version")]
+[assembly: AssemblyProduct("")]
 #else
 [assembly : AssemblyProduct("Release Version")]
 #endif
