@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlayerTest", "Test\PlayerTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetworkBufferTest", "Test\NetworkBufferTest\NetworkBufferTest.csproj", "{20FFFD66-E463-4118-932A-C27DEC526C92}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VideoGuest.window", "MediaExtensions\VideoGuest.Windows.vcxproj", "{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -73,20 +71,6 @@ Global
 		{20FFFD66-E463-4118-932A-C27DEC526C92}.Release|x64.Build.0 = Release|Any CPU
 		{20FFFD66-E463-4118-932A-C27DEC526C92}.Release|x86.ActiveCfg = Release|Any CPU
 		{20FFFD66-E463-4118-932A-C27DEC526C92}.Release|x86.Build.0 = Release|Any CPU
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|ARM.ActiveCfg = Debug|ARM
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|ARM.Build.0 = Debug|ARM
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|x64.ActiveCfg = Debug|x64
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|x64.Build.0 = Debug|x64
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|x86.ActiveCfg = Debug|Win32
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Debug|x86.Build.0 = Debug|Win32
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|Any CPU.ActiveCfg = Release|Win32
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|ARM.ActiveCfg = Release|ARM
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|ARM.Build.0 = Release|ARM
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|x64.ActiveCfg = Release|x64
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|x64.Build.0 = Release|x64
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|x86.ActiveCfg = Release|Win32
-		{C9492B18-ECB3-4E55-81FE-F0A6E8EE1A66}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

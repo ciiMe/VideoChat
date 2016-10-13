@@ -89,6 +89,9 @@
     <Reference Include="MediaFoundation">
       <HintPath>..\..\lib\MediaFoundation.dll</HintPath>
     </Reference>
+    <Reference Include="MediaFoundation.Extension">
+      <HintPath>..\..\Lib\MediaFoundation.Extension.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -97,6 +100,8 @@
     <Compile Include="INetworkStreamProvider.cs" />
     <Compile Include="IPlayerUI.cs" />
     <Compile Include="MediaBase.cs" />
+    <Compile Include="MediaSource\CMediaStream.cs" />
+    <Compile Include="MediaSource\Validation.cs" />
     <Compile Include="MsgDialog.cs" />
     <Compile Include="DialogInvoker.cs" />
     <Compile Include="frmPlayerContent.cs">
@@ -106,7 +111,7 @@
       <DependentUpon>frmPlayerContent.cs</DependentUpon>
     </Compile>
     <Compile Include="BasePlayer.cs" />
-    <Compile Include="NetworkSource.cs" />
+    <Compile Include="MediaSource\NetworkSource.cs" />
     <Compile Include="Network\BufferWrapper.cs" />
     <Compile Include="Network\ConstParameters.cs" />
     <Compile Include="Network\INetworkClient.cs" />
@@ -114,8 +119,10 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SourceState.cs" />
-    <Compile Include="Stream\INetworkStreamAdapter.cs" />
-    <Compile Include="Stream\NetworkStreamAdapter.cs" />
+    <Compile Include="Stream\BufferPacket.cs" />
+    <Compile Include="Stream\INetworkMediaAdapter.cs" />
+    <Compile Include="Stream\NetworkMediaAdapter.cs" />
+    <Compile Include="Stream\StreamConvertor.cs" />
     <EmbeddedResource Include="frmPlayerContent.resx">
       <SubType>Designer</SubType>
       <DependentUpon>frmPlayerContent.cs</DependentUpon>
@@ -158,12 +165,7 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\MediaExtensions\VideoGuest.Windows.vcxproj">
-      <Project>{c9492b18-ecb3-4e55-81fe-f0a6e8ee1a66}</Project>
-      <Name>VideoGuest.window</Name>
-    </ProjectReference>
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

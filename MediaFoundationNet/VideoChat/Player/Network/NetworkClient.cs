@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using VideoPlayer.Stream;
 
@@ -9,8 +11,6 @@ namespace VideoPlayer.Network
     public struct ReceivedBuffer
     {
         public byte[] Buffer;
-        public int ValidPosition;
-        public int ValidLength;
         public int LengthForCurrentPacket;
     }
 
@@ -21,7 +21,7 @@ namespace VideoPlayer.Network
 
         private List<ReceivedBuffer> _receivedBuffers;
         private int _receivedLength;
-        private OnDataArrivedHandler _callBack;
+        private MediaBufferEventHandler _callBack;
 
         public StspOperation Option
         {
@@ -47,9 +47,9 @@ namespace VideoPlayer.Network
             }
         }
 
-        public OnDataArrivedHandler Callback => _callBack;
+        public MediaBufferEventHandler Callback => _callBack;
 
-        public NetworkPacket(OnDataArrivedHandler callback)
+        public NetworkPacket(MediaBufferEventHandler callback)
         {
             _option = StspOperation.StspOperation_Unknown;
             _length = 0;
@@ -61,20 +61,20 @@ namespace VideoPlayer.Network
 
         public void AddBuffer(byte[] buffer, int dataLength)
         {
-            var pos = 0;
+            var offset = 0;
             if (IsEmpty())
             {
-                Option = (StspOperation)BitConverter.ToInt32(buffer, 4);
-                Length = BitConverter.ToInt32(buffer, 0);
-                pos = 8;
+                _length = BitConverter.ToInt32(buffer, 0);
+                _option = (StspOperation)BitConverter.ToInt32(buffer, 4);
+                offset = 8;
             }
-            var bufferValidLen = dataLength - pos;
+            var bufferValidLen = dataLength - offset;
+            var data = new byte[bufferValidLen];
+            Array.Copy(buffer, offset, data, 0, bufferValidLen);
 
             _receivedBuffers.Add(new ReceivedBuffer
             {
-                Buffer = buffer,
-                ValidPosition = pos,
-                ValidLength = bufferValidLen,
+                Buffer = data,
                 LengthForCurrentPacket = bufferValidLen <= _length - _receivedLength ? bufferValidLen : _length - _receivedLength
             });
             _receivedLength += bufferValidLen;
@@ -90,6 +90,9 @@ namespace VideoPlayer.Network
             return _receivedLength >= _length;
         }
 
+        /// <summary>
+        /// Get the extra data which is not for this packet.
+        /// </summary>
         public int GetExtraDataLength()
         {
             return _receivedLength - _length;
@@ -103,11 +106,11 @@ namespace VideoPlayer.Network
             }
 
             var result = new byte[_length];
-
             var pos = 0;
             foreach (var buffer in _receivedBuffers)
             {
-                Array.Copy(buffer.Buffer, buffer.ValidPosition, result, pos, buffer.LengthForCurrentPacket);
+                Array.Copy(buffer.Buffer, 0, result, pos, buffer.LengthForCurrentPacket);
+                pos += buffer.LengthForCurrentPacket;
             }
 
             return result;
@@ -169,7 +172,7 @@ namespace VideoPlayer.Network
             _socket.Send(buffer);
         }
 
-        public void StartReceive(OnDataArrivedHandler callback)
+        public void StartReceive(MediaBufferEventHandler callback)
         {
             if (_penddingPacket != null)
             {
@@ -186,6 +189,11 @@ namespace VideoPlayer.Network
         {
             var socket = ar.AsyncState as Socket;
             _currentBufferDataLength = socket.EndReceive(ar);
+
+            if (_currentBufferDataLength == 0)
+            {
+                return;
+            }
 
             _penddingPacket.AddBuffer(_currentBuffer, _currentBufferDataLength);
             if (_penddingPacket.IsFull())
@@ -205,10 +213,11 @@ namespace VideoPlayer.Network
 
             try
             {
-                handler(option, data);
+                handler(option, new BufferPacket(data));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Exception:{ex.Message} \r {ex.StackTrace}");
             }
         }
 

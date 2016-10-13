@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 namespace VideoPlayer
 {
@@ -20,17 +21,28 @@ namespace VideoPlayer
         StspOperation_Last,
     };
 
-    struct StspStreamDescription
+    public struct GUID
     {
-        Guid guiMajorType;
-        Guid guiSubType;
-        int dwStreamId;
-        uint cbAttributesSize;
+        long Data1;
+        short Data2;
+        short Data3;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+        char[] Data4 ;
+    }
+
+    public struct StspStreamDescription
+    {
+        public Guid guiMajorType;
+        public Guid guiSubType;
+        public int dwStreamId;
+        public int cbAttributesSize;
     };
 
     public struct StspDescription
     {
-        uint cNumStreams;
-        StspStreamDescription[] aStreams;
+        public uint cNumStreams;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
+        public StspStreamDescription[] aStreams ;
     };
 }
