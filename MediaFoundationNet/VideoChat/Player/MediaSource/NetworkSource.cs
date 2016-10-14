@@ -5,18 +5,24 @@ using VideoPlayer.Stream;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using VideoPlayer.Network;
+using static MediaFoundation.Misc.ConstPropVariant;
 
 namespace VideoPlayer.MediaSource
 {
     public class NetworkSource : IMFMediaEventGenerator, IMFMediaSource
     {
+        object _critSec;
         private SourceState _eSourceState;
-
-        // Collection of streams associated with the source
-        List<IMFMediaStream> _streams;
+        IMFMediaEventQueue _spEventQueue;
         INetworkMediaAdapter _networkStreamAdapter;
 
         IMFPresentationDescriptor _spPresentationDescriptor;
+        // Collection of streams associated with the source
+        List<IMFMediaStream> _streams;
+
+        event EventHandler _openedEvent;
+        float _flRate;
 
         public NetworkSource()
         {
@@ -32,20 +38,20 @@ namespace VideoPlayer.MediaSource
             _networkStreamAdapter.Open(ip, port);
         }
 
-        private void _networkStreamAdapter_OnDataArrived(StspOperation operation, BufferPacket data)
+        private void _networkStreamAdapter_OnDataArrived(StspOperation operation, BufferPacket packet)
         {
             switch (operation)
             {
                 // We received server description
                 case StspOperation.StspOperation_ServerDescription:
-                    ProcessServerDescription(data);
+                    ProcessServerDescription(packet);
                     break;
                 // We received a media sample
                 case StspOperation.StspOperation_ServerSample:
-                    ProcessServerSample(data);
+                    ProcessServerSample(packet);
                     break;
                 case StspOperation.StspOperation_ServerFormatChange:
-                    ProcessServerFormatChange(data);
+                    ProcessServerFormatChange(packet);
                     break;
                 // No supported operation
                 default:
@@ -136,69 +142,477 @@ namespace VideoPlayer.MediaSource
             _spPresentationDescriptor = spPresentationDescriptor;
         }
 
-        private void ProcessServerSample(BufferPacket data)
+        private HResult ValidatePresentationDescriptor(IMFPresentationDescriptor pPD)
         {
-            Debug.WriteLine($"ProcessServerSample(...) Received buffer:{data.Length}");
+            HResult hr = HResult.S_OK;
+            bool fSelected = false;
+            int cStreams = 0;
+
+            if (_streams.Count == 0)
+            {
+                return HResult.E_UNEXPECTED;
+            }
+
+            // The caller's PD must have the same number of streams as ours.
+            hr = pPD.GetStreamDescriptorCount(out cStreams);
+
+            if (MFError.Succeeded(hr))
+            {
+                if (cStreams != _streams.Count)
+                {
+                    hr = HResult.E_INVALIDARG;
+                }
+            }
+
+            // The caller must select at least one stream.
+            if (MFError.Succeeded(hr))
+            {
+                for (int i = 0; i < cStreams; i++)
+                {
+                    IMFStreamDescriptor spSD;
+                    hr = pPD.GetStreamDescriptorByIndex(i, out fSelected, out spSD);
+                    if (MFError.Failed(hr))
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return hr;
         }
 
-        private void ProcessServerFormatChange(BufferPacket data)
+        private void ProcessServerSample(BufferPacket packet)
         {
-            Debug.WriteLine($"ProcessServerFormatChange(...) Received buffer:{data.Length}");
+            if (_eSourceState == SourceState.SourceState_Started)
+            {
+                // Only process samples when we are in started state
+                StspSampleHeader sampleHead;
+
+                // Copy the header object
+                sampleHead = StreamConvertor.TakeObject<StspSampleHeader>(packet);
+                if (packet.Length <= 0)
+                {
+                    ThrowIfError(HResult.E_INVALIDARG);
+                }
+
+                MediaStream spStream;
+                ThrowIfError(GetStreamById(sampleHead.dwStreamId, out spStream));
+
+                if (spStream.IsActive)
+                {
+                    // Convert packet to MF sample
+                    IMFSample spSample;
+                    ThrowIfError(ToMFSample(packet, out spSample));
+                    // Forward sample to a proper stream.
+                    spStream.ProcessSample(sampleHead, spSample);
+                }
+            }
+            else
+            {
+                Throw(HResult.MF_E_UNEXPECTED);
+            }
+        }
+
+        private HResult ToMFSample(BufferPacket packet, out IMFSample sample)
+        {
+            sample = null;
+            IMFSample spSample;
+
+            var hr = MFExtern.MFCreateSample(out spSample);
+            if (MFError.Failed(hr))
+            {
+                return hr;
+            }
+
+            //Get the media buffer
+            IMFMediaBuffer mediaBuffer;
+            hr = BufferWrapper.ConverToMediaBuffer(packet, out mediaBuffer);
+            if (MFError.Failed(hr))
+            {
+                return hr;
+            }
+
+            // Add media buffer to the sample
+            hr = spSample.AddBuffer(mediaBuffer);
+            if (MFError.Failed(hr))
+            {
+                return hr;
+            }
+
+            sample = spSample;
+            return hr;
+        }
+
+        private HResult GetStreamById(int streamId, out MediaStream streamEntity)
+        {
+            var hr = HResult.S_OK;
+
+            foreach (var stream in _streams)
+            {
+                var s = stream as MediaStream;
+                if (s.Id == streamId)
+                {
+                    streamEntity = s;
+                    return hr;
+                }
+            }
+            streamEntity = null;
+            return hr;
+        }
+
+        private void ProcessServerFormatChange(BufferPacket packet)
+        {
+            IntPtr ptr;
+            try
+            {
+                if (_eSourceState != SourceState.SourceState_Started)
+                {
+
+                    Throw(HResult.MF_E_UNEXPECTED);
+                }
+                int cbTotalLen = packet.Length;
+                if (cbTotalLen <= 0)
+                {
+                    Throw(HResult.E_INVALIDARG);
+                }
+
+                // Minimum size of the operation payload is size of Description structure
+                if (cbTotalLen < Marshal.SizeOf(typeof(StspStreamDescription)))
+                {
+                    ThrowIfError(HResult.MF_E_UNSUPPORTED_FORMAT);
+                }
+
+                //todo: add try or use enhanced method to judge the HResult received from TakeObject(...)
+                StspStreamDescription streamDesc = StreamConvertor.TakeObject<StspStreamDescription>(packet);
+                if (cbTotalLen != Marshal.SizeOf(typeof(StspStreamDescription)) + streamDesc.cbAttributesSize || streamDesc.cbAttributesSize == 0)
+                {
+                    ThrowIfError(HResult.MF_E_UNSUPPORTED_FORMAT);
+                }
+
+                // Prepare buffer where we will copy attributes to
+                ptr = Marshal.AllocHGlobal(streamDesc.cbAttributesSize);
+                var data = packet.MoveLeft(streamDesc.cbAttributesSize);
+                Marshal.Copy(data, 0, ptr, streamDesc.cbAttributesSize);
+
+                IMFMediaType spMediaType;
+                // Create a media type object.
+                ThrowIfError(MFExtern.MFCreateMediaType(out spMediaType));
+                // Initialize media type's attributes
+                ThrowIfError(MFExtern.MFInitAttributesFromBlob(spMediaType, ptr, streamDesc.cbAttributesSize));
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            Marshal.Release(ptr);
         }
 
         #region IMFMediaEventGenerator
-        public HResult BeginGetEvent(IMFAsyncCallback pCallback, object o)
+        public HResult BeginGetEvent(IMFAsyncCallback pCallback, object punkState)
         {
-            throw new NotImplementedException();
+            HResult hr = HResult.S_OK;
+            lock (_critSec)
+            {
+                hr = CheckShutdown();
+                if (MFError.Succeeded(hr))
+                {
+                    hr = _spEventQueue.BeginGetEvent(pCallback, punkState);
+                }
+                return hr;
+            }
         }
 
         public HResult EndGetEvent(IMFAsyncResult pResult, out IMFMediaEvent ppEvent)
         {
-            throw new NotImplementedException();
+            HResult hr = HResult.S_OK;
+            ppEvent = null;
+
+            lock (_critSec)
+            {
+                hr = CheckShutdown();
+                if (MFError.Succeeded(hr))
+                {
+                    hr = _spEventQueue.EndGetEvent(pResult, out ppEvent);
+                }
+                return hr;
+            }
         }
 
         public HResult GetEvent(MFEventFlag dwFlags, out IMFMediaEvent ppEvent)
         {
-            throw new NotImplementedException();
+            // NOTE:
+            // GetEvent can block indefinitely, so we don't hold the lock.
+            // This requires some juggling with the event queue pointer.
+            var hr = HResult.S_OK;
+            IMFMediaEventQueue spQueue = null;
+            ppEvent = null;
+            lock (_critSec)
+            {
+                // Check shutdown
+                hr = CheckShutdown();
+                // Get the pointer to the event queue.
+                if (MFError.Succeeded(hr))
+                {
+                    spQueue = _spEventQueue;
+                }
+            }
+
+            // Now get the event.
+            if (MFError.Succeeded(hr))
+            {
+                hr = spQueue.GetEvent(dwFlags, out ppEvent);
+            }
+
+            return hr;
         }
 
         public HResult QueueEvent(MediaEventType met, Guid guidExtendedType, HResult hrStatus, ConstPropVariant pvValue)
         {
-            throw new NotImplementedException();
+            HResult hr = HResult.S_OK;
+            lock (_critSec)
+            {
+                hr = CheckShutdown();
+                if (MFError.Succeeded(hr))
+                {
+                    hr = _spEventQueue.QueueEventParamVar(met, guidExtendedType, hrStatus, pvValue);
+                }
+                return hr;
+            }
         }
         #endregion
 
         #region IMFMediaSource
         public HResult CreatePresentationDescriptor(out IMFPresentationDescriptor ppPresentationDescriptor)
         {
-            throw new NotImplementedException();
+            ppPresentationDescriptor = null;
+            lock (_critSec)
+            {
+                HResult hr = CheckShutdown();
+
+                if (MFError.Succeeded(hr) && (_eSourceState == SourceState.SourceState_Opening || _eSourceState == SourceState.SourceState_Invalid || null != _spPresentationDescriptor))
+                {
+                    hr = HResult.MF_E_NOT_INITIALIZED;
+                }
+
+                if (MFError.Succeeded(hr))
+                {
+                    hr = _spPresentationDescriptor.Clone(out ppPresentationDescriptor);
+                }
+
+                return hr;
+            }
         }
 
         public HResult GetCharacteristics(out MFMediaSourceCharacteristics pdwCharacteristics)
         {
-            throw new NotImplementedException();
+            pdwCharacteristics = MFMediaSourceCharacteristics.None;
+            lock (_critSec)
+            {
+                HResult hr = CheckShutdown();
+                if (MFError.Succeeded(hr))
+                {
+                    pdwCharacteristics = MFMediaSourceCharacteristics.IsLive;
+                }
+
+                return hr;
+            }
         }
 
         public HResult Pause()
         {
-            throw new NotImplementedException();
+            return HResult.MF_E_INVALID_STATE_TRANSITION;
         }
 
         public HResult Shutdown()
         {
-            throw new NotImplementedException();
+            lock (_critSec)
+            {
+                HResult hr = CheckShutdown();
+
+                if (MFError.Succeeded(hr))
+                {
+                    if (_spEventQueue != null)
+                    {
+                        _spEventQueue.Shutdown();
+                    }
+                    if (_networkStreamAdapter != null)
+                    {
+                        _networkStreamAdapter.Close();
+                    }
+
+                    foreach (var stream in _streams)
+                    {
+                        (stream as MediaStream).Shutdown();
+                    }
+
+                    _eSourceState = SourceState.SourceState_Shutdown;
+                    _streams.Clear();
+                    _spEventQueue.Shutdown();
+                    _networkStreamAdapter = null;
+                }
+
+                return hr;
+            }
         }
 
-        public HResult Start(IMFPresentationDescriptor pPresentationDescriptor, Guid pguidTimeFormat, ConstPropVariant pvarStartPosition)
+        public HResult Start(IMFPresentationDescriptor pPresentationDescriptor, Guid pguidTimeFormat, ConstPropVariant pvarStartPos)
         {
-            throw new NotImplementedException();
+            HResult hr = HResult.S_OK;
+
+            // Check parameters.
+
+            // Start position and presentation descriptor cannot be NULL.
+            if (pvarStartPos == null || pPresentationDescriptor == null)
+            {
+                return HResult.E_INVALIDARG;
+            }
+
+            // Check the time format.
+            if ((pguidTimeFormat != null) && (pguidTimeFormat != Guid.Empty))
+            {
+                // Unrecognized time format GUID.
+                return HResult.MF_E_UNSUPPORTED_TIME_FORMAT;
+            }
+
+            // Check the data type of the start position.
+            if (pvarStartPos.GetVariantType() != VariantType.None && pvarStartPos.GetVariantType() != VariantType.Int64)
+            {
+                return HResult.MF_E_UNSUPPORTED_TIME_FORMAT;
+            }
+
+            lock (_critSec)
+            {
+                if (_eSourceState != SourceState.SourceState_Stopped && _eSourceState != SourceState.SourceState_Started)
+                {
+                    hr = HResult.MF_E_INVALIDREQUEST;
+                }
+
+                if (MFError.Succeeded(hr))
+                {
+                    // Check if the presentation description is valid.
+                    hr = ValidatePresentationDescriptor(pPresentationDescriptor);
+                }
+            }
+
+            if (MFError.Succeeded(hr))
+            {
+                CSourceOperation op = new CSourceOperation
+                {
+                    Type = SourceOperationType.Operation_Start,
+                    PresentationDescriptor = pPresentationDescriptor,
+                    Data = pvarStartPos
+                };
+                doStart(op);
+            }
+            return hr;
+        }
+
+        private void doStart(CSourceOperation pOp)
+        {
+            Debug.Assert(pOp.Type == SourceOperationType.Operation_Start);
+
+            IMFPresentationDescriptor spPD = pOp.PresentationDescriptor;
+
+            try
+            {
+                SelectStreams(spPD);
+
+                _eSourceState = SourceState.SourceState_Starting;
+                _networkStreamAdapter.SendStartRequest();
+                _eSourceState = SourceState.SourceState_Started;
+
+                ThrowIfError(_spEventQueue.QueueEventParamVar(MediaEventType.MESourceStarted, Guid.Empty, HResult.S_OK, pOp.Data));
+            }
+            catch (Exception ex)
+            {
+                _spEventQueue.QueueEventParamVar(MediaEventType.MESourceStarted, Guid.Empty, (HResult)ex.HResult, null);
+            }
+        }
+
+        private void SelectStreams(IMFPresentationDescriptor pPD)
+        {
+            for (int nStream = 0; nStream < _streams.Count; ++nStream)
+            {
+                IMFStreamDescriptor spSD;
+                MediaStream spStream;
+                int nStreamId;
+                bool fSelected;
+
+                // Get next stream descriptor
+                ThrowIfError(pPD.GetStreamDescriptorByIndex(nStream, out fSelected, out spSD));
+
+                // Get stream id
+                ThrowIfError(spSD.GetStreamIdentifier(out nStreamId));
+
+                // Get simple net media stream
+                ThrowIfError(GetStreamById(nStreamId, out spStream));
+
+                // Remember if stream was selected
+                bool fWasSelected = spStream.IsActive;
+                ThrowIfError(spStream.SetActive(fSelected));
+
+                if (fSelected)
+                {
+                    // Choose event type to send
+                    MediaEventType met = fWasSelected ? MediaEventType.MEUpdatedStream : MediaEventType.MENewStream;
+                    ThrowIfError(_spEventQueue.QueueEventParamUnk(met, Guid.Empty, HResult.S_OK, spStream));
+
+                    // Start the stream. The stream will send the appropriate event.
+                    ThrowIfError(spStream.Start());
+                }
+            }
         }
 
         public HResult Stop()
         {
-            throw new NotImplementedException();
+            HResult hr = HResult.S_OK;
+            CSourceOperation spStopOp = new CSourceOperation
+            {
+                Type = SourceOperationType.Operation_Stop
+            };
+            // Queue asynchronous stop
+            doStop(spStopOp);
+            return hr;
+        }
+
+        private void doStop(CSourceOperation pOp)
+        {
+            Debug.Assert(pOp.Type == SourceOperationType.Operation_Stop);
+
+            HResult hr = HResult.S_OK;
+            try
+            {
+                foreach (var stream in _streams)
+                {
+                    var cs = (stream as MediaStream);
+                    if (cs.IsActive)
+                    {
+                        ThrowIfError(cs.Flush());
+                        ThrowIfError(cs.Stop());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                hr = (HResult)ex.HResult;
+            }
+            // Send the "stopped" event. This might include a failure code.
+            _spEventQueue.QueueEventParamVar(MediaEventType.MESourceStopped, Guid.Empty, hr, null);
         }
         #endregion
+
+        private HResult CheckShutdown()
+        {
+            if (_eSourceState == SourceState.SourceState_Shutdown)
+            {
+                return HResult.MF_E_SHUTDOWN;
+            }
+            else
+            {
+                return HResult.S_OK;
+            }
+        }
 
         private void HandleError(int hr)
         {

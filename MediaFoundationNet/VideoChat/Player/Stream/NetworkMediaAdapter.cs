@@ -20,7 +20,7 @@ namespace VideoPlayer.Stream
         {
             try
             {
-                ThrowIfError(CheckShutdown()); 
+                ThrowIfError(CheckShutdown());
 
                 _networkSender.Connect(ip, port);
                 SendDescribeRequest();
@@ -33,7 +33,14 @@ namespace VideoPlayer.Stream
                 HandleError(ex.HResult);
                 return HResult.E_FAIL;
             }
-        } 
+        }
+
+        public HResult Close()
+        {
+            HResult hr = HResult.S_OK;
+            _networkSender.Close();
+            return hr;
+        }
 
         public HResult CheckShutdown()
         {
@@ -45,10 +52,9 @@ namespace VideoPlayer.Stream
             OnDataArrived?.Invoke(option, data);
         }
 
-        public void SendRequest(StspOperation operation)
+        public void SendStartRequest()
         {
-            var bytes = BufferWrapper.BuildOperationBytes(operation);
-            _networkSender.Send(bytes);
+            SendRequest(StspOperation.StspOperation_ClientRequestStart);
         }
 
         public void SendDescribeRequest()
@@ -56,10 +62,16 @@ namespace VideoPlayer.Stream
             SendRequest(StspOperation.StspOperation_ClientRequestDescription);
         }
 
+        public void SendRequest(StspOperation operation)
+        {
+            var bytes = BufferWrapper.BuildOperationBytes(operation);
+            _networkSender.Send(bytes);
+        }
+
         private void HandleError(int hr)
         {
             Throw((HResult)hr);
-        } 
+        }
 
         private void ThrowIfError(HResult hr)
         {

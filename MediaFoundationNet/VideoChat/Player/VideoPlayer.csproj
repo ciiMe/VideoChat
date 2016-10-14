@@ -99,8 +99,9 @@
   <ItemGroup>
     <Compile Include="INetworkStreamProvider.cs" />
     <Compile Include="IPlayerUI.cs" />
-    <Compile Include="MediaBase.cs" />
+    <Compile Include="MediaSource\MediaBase.cs" />
     <Compile Include="MediaSource\MediaStream.cs" />
+    <Compile Include="MediaSource\MediaStructs.cs" />
     <Compile Include="MediaSource\Validation.cs" />
     <Compile Include="MsgDialog.cs" />
     <Compile Include="DialogInvoker.cs" />
@@ -118,7 +119,6 @@
     <Compile Include="Network\NetworkClient.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SourceState.cs" />
     <Compile Include="Stream\BufferPacket.cs" />
     <Compile Include="Stream\INetworkMediaAdapter.cs" />
     <Compile Include="Stream\NetworkMediaAdapter.cs" />

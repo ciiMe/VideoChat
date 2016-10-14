@@ -37,6 +37,7 @@ namespace VideoPlayer.Stream
             return result;
         }
 
+        //todo: the copy cost too much time, should be enhanced.
         public byte[] Get()
         {
             if (Length <= 0)

@@ -28,6 +28,7 @@ namespace VideoPlayer.Stream
         /// <param name="packet">The buffer where struct bytes are sasved.</param>
         public static T TakeObject<T>(BufferPacket packet)
         {
+            //todo: convert return type as HResult.
             var size = Marshal.SizeOf(typeof(T));
             var buffer = packet.MoveLeft(size);
             return BytesToStruct<T>(buffer, size);
@@ -38,6 +39,7 @@ namespace VideoPlayer.Stream
         /// </summary>
         public static T ByteToStructure<T>(byte[] buffer)
         {
+            //todo: convert return type as HResult.
             int size = Marshal.SizeOf(typeof(T));
             return BytesToStruct<T>(buffer, size);
         }
@@ -47,6 +49,7 @@ namespace VideoPlayer.Stream
         /// </summary> 
         private static T BytesToStruct<T>(byte[] buffer, int size)
         {
+            //todo: convert return type as HResult.
             IntPtr p = Marshal.AllocHGlobal(size);
             try
             {
@@ -61,6 +64,7 @@ namespace VideoPlayer.Stream
 
         public static T ByteToStructure<T>(byte[] buffer, int positioin)
         {
+            //todo: convert return type as HResult.
             int size = Marshal.SizeOf(typeof(T));
             IntPtr p = Marshal.AllocHGlobal(size);
 

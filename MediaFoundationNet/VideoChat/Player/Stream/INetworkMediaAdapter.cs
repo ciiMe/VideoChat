@@ -5,11 +5,14 @@ namespace VideoPlayer.Stream
 {
     public interface INetworkMediaAdapter
     {
-        HResult Open(string ip, int port); 
+        HResult Open(string ip, int port);
+        HResult Close();
 
-        void SendRequest(StspOperation eOperation);
+        void SendStartRequest();
         void SendDescribeRequest();
+        void SendRequest(StspOperation eOperation);
 
         event MediaBufferEventHandler OnDataArrived;
+
     }
 }
