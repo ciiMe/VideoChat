@@ -56,42 +56,34 @@ namespace VideoPlayer.MediaSource
 
         private void ProcessServerDescription(BufferPacket data)
         {
-            Debug.WriteLine($"ProcessServerDescription(...) Received buffer:{data.Length}");
-
-            int cbTotalLen = 0;
-            int cbConstantSize = 0;
             StspDescription desc = new StspDescription();
-            int descLen = 0;
-            int streamDescLen = 0;
-
-            cbTotalLen = data.Length;
-            descLen = Marshal.SizeOf(desc);
-            streamDescLen = Marshal.SizeOf(typeof(StspStreamDescription));
+            int descSize = Marshal.SizeOf(typeof(StspDescription));
+            int streamDescSize = Marshal.SizeOf(typeof(StspStreamDescription));
 
             // Copy description  
-            desc = StreamConvertor.ByteToStructure<StspDescription>(data.MoveLeft(descLen));
+            desc = StreamConvertor.TakeObject<StspDescription>(data);
             // Size of the packet should match size described in the packet (size of Description structure + size of attribute blob)
-            cbConstantSize = Convert.ToInt32(descLen + (desc.cNumStreams - 1) * streamDescLen);
+            var cbConstantSize = Convert.ToInt32(descSize + (desc.cNumStreams - 1) * streamDescSize);
             // Check if the input parameters are valid. We only support 2 streams.
-            if (cbConstantSize < Marshal.SizeOf(desc) || desc.cNumStreams == 0 || desc.cNumStreams > 2 || cbTotalLen < cbConstantSize)
+            if (cbConstantSize < Marshal.SizeOf(desc) || desc.cNumStreams == 0 || desc.cNumStreams > 2 || data.Length < cbConstantSize)
             {
                 ThrowIfError(HResult.MF_E_UNSUPPORTED_FORMAT);
             }
 
             try
             {
-                List<StspStreamDescription> allStreamDescs = new List<StspStreamDescription>(desc.aStreams);
+                List<StspStreamDescription> streamDescs = new List<StspStreamDescription>(desc.aStreams);
 
                 for (int i = 1; i < desc.cNumStreams; i++)
                 {
-                    var sd = StreamConvertor.ByteToStructure<StspStreamDescription>(data.MoveLeft(streamDescLen));
-                    allStreamDescs.Add(sd);
+                    var sd = StreamConvertor.TakeObject<StspStreamDescription>(data);
+                    streamDescs.Add(sd);
                 }
 
                 int cbAttributeSize = 0;
                 for (int i = 0; i < desc.cNumStreams; ++i)
                 {
-                    cbAttributeSize += allStreamDescs[i].cbAttributesSize;
+                    cbAttributeSize += streamDescs[i].cbAttributesSize;
                     /* todo: check out of range on cbAttributeSize
                     if (out of range)
                     {
@@ -100,16 +92,16 @@ namespace VideoPlayer.MediaSource
                 }
 
                 // Validate the parameters. Limit the total size of attributes to 64kB.
-                if ((cbTotalLen != (cbConstantSize + cbAttributeSize)) || (cbAttributeSize > 0x10000))
+                if ((data.Length != (cbConstantSize + cbAttributeSize)) || (cbAttributeSize > 0x10000))
                 {
                     Throw(HResult.MF_E_UNSUPPORTED_FORMAT);
                 }
 
                 // Create stream for every stream description sent by the server.
-                foreach (var sd in allStreamDescs)
+                foreach (var sd in streamDescs)
                 {
-                    CMediaStream spStream;
-                    ThrowIfError(CMediaStream.CreateInstance(sd, data, this, out spStream));
+                    MediaStream spStream;
+                    ThrowIfError(MediaStream.CreateInstance(sd, data, this, out spStream));
                     _streams.Add(spStream);
                 }
 

@@ -100,7 +100,7 @@
     <Compile Include="INetworkStreamProvider.cs" />
     <Compile Include="IPlayerUI.cs" />
     <Compile Include="MediaBase.cs" />
-    <Compile Include="MediaSource\CMediaStream.cs" />
+    <Compile Include="MediaSource\MediaStream.cs" />
     <Compile Include="MediaSource\Validation.cs" />
     <Compile Include="MsgDialog.cs" />
     <Compile Include="DialogInvoker.cs" />

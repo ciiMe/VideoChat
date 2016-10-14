@@ -2,6 +2,9 @@
 
 namespace VideoPlayer.Stream
 {
+    /// <summary>
+    /// The original buffer list received from network.
+    /// </summary>
     public class BufferPacket
     {
         private byte[] _buffer;
