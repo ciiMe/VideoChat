@@ -143,6 +143,13 @@ namespace VideoPlayer.Network
 
         private NetworkPacket _penddingPacket;
 
+        private object _critSec;
+
+        public NetworkClient()
+        {
+            _critSec = new object();
+        }
+
         public void Connect(string ip, int port)
         {
             _ip = ip;
@@ -187,22 +194,25 @@ namespace VideoPlayer.Network
 
         private void handleDateReceived(IAsyncResult ar)
         {
-            var socket = ar.AsyncState as Socket;
-            _currentBufferDataLength = socket.EndReceive(ar);
-
-            if (_currentBufferDataLength == 0)
+            lock (_critSec)
             {
-                return;
-            }
+                var socket = ar.AsyncState as Socket;
+                _currentBufferDataLength = socket.EndReceive(ar);
 
-            _penddingPacket.AddBuffer(_currentBuffer, _currentBufferDataLength);
-            if (_penddingPacket.IsFull())
-            {
-                invokePacketComplete();
-                PrepareNextReceive();
-            }
+                if (_currentBufferDataLength == 0)
+                {
+                    return;
+                }
 
-            _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
+                _penddingPacket.AddBuffer(_currentBuffer, _currentBufferDataLength);
+                if (_penddingPacket.IsFull())
+                {
+                    invokePacketComplete();
+                    PrepareNextReceive();
+                }
+
+                _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
+            }
         }
 
         private void invokePacketComplete()
@@ -229,8 +239,7 @@ namespace VideoPlayer.Network
                 Array.Copy(_currentBuffer, _currentBufferDataLength - extraLen, _currentBuffer, 0, extraLen);
                 _currentBufferDataLength = extraLen;
             }
-            _penddingPacket.Reset();
-            _penddingPacket = null;
+            _penddingPacket.Reset(); 
         }
 
         private void handleDataSend(IAsyncResult ar)

@@ -26,7 +26,6 @@ namespace VideoPlayer.Network
         public static HResult ConverToMediaBuffer(BufferPacket packet, out IMFMediaBuffer mediaBuffer)
         {
             mediaBuffer = null;
-
             IMFMediaBuffer spMediaBuffer;
             HResult hr = MFExtern.MFCreateMemoryBuffer(packet.Length, out spMediaBuffer);
 
@@ -57,7 +56,7 @@ namespace VideoPlayer.Network
             var data = packet.Get();
             Marshal.Copy(data, 0, pBuffer, packet.Length);
             spMediaBuffer.Unlock();
-
+            mediaBuffer = spMediaBuffer;
             return hr;
         }
     }

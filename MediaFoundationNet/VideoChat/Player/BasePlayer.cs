@@ -6,10 +6,11 @@ using System.Runtime.InteropServices;
 using MediaFoundation;
 using MediaFoundation.EVR;
 using MediaFoundation.Misc;
+using VideoPlayer.MediaSource;
 
 namespace VideoPlayer
 {
-    public class BasePlayer : COMBase, IMFAsyncCallback
+    public class BasePlayer : COMBase, IMFAsyncCallback, IPlayer
     {
         [DllImport("user32", CharSet = CharSet.Auto)]
         private extern static int PostMessage(IntPtr handle, int msg, IntPtr wParam, IntPtr lParam);
@@ -45,7 +46,7 @@ namespace VideoPlayer
 
         public BasePlayer(IntPtr hVideo, IntPtr hEvent)
         {
-            TRACE(("CPlayer::CPlayer"));
+            TRACE(("CPlayer.CPlayer"));
 
             Debug.Assert(hVideo != IntPtr.Zero);
             Debug.Assert(hEvent != IntPtr.Zero);
@@ -68,10 +69,9 @@ namespace VideoPlayer
             Debug.Assert(m_pSession == null);
         }
 
-        public HResult OpenURL(string sURL)
+        public HResult Open(string sURL)
         {
-            TRACE("CPlayer::OpenURL");
-            TRACE("URL = " + sURL);
+            TRACE($"CPlayer.OpenURL{sURL}");
 
             //1. Create a new media session.
             //2. Create the media source.
@@ -85,7 +85,7 @@ namespace VideoPlayer
                 IMFTopology pTopology = null;
 
                 //Create the media session.
-                CreateSession();
+                CreateSession(true);
 
                 //Create the media source.
                 CreateMediaSource(sURL);
@@ -116,9 +116,24 @@ namespace VideoPlayer
             return hr;
         }
 
+        public HResult Open(string ip, int port)
+        {
+            TRACE($"CPlayer.Open({ip}:{port}");
+
+            //Create the media source.
+            var hr = CreateMediaSource(ip, port);
+
+            if (!MFError.Succeeded(hr))
+            {
+                NotifyError(hr);
+            }
+
+            return hr;
+        }
+
         public HResult Play()
         {
-            TRACE("CPlayer::Play");
+            TRACE("CPlayer.Play");
 
             if (m_state != PlayerState.Paused)
             {
@@ -149,7 +164,7 @@ namespace VideoPlayer
 
         public HResult Pause()
         {
-            TRACE("CPlayer::Pause");
+            TRACE("CPlayer.Pause");
 
             if (m_state != PlayerState.Started)
             {
@@ -181,7 +196,7 @@ namespace VideoPlayer
 
         public HResult Shutdown()
         {
-            TRACE("CPlayer::ShutDown");
+            TRACE("CPlayer.ShutDown");
 
             HResult hr = HResult.S_OK;
 
@@ -380,11 +395,13 @@ namespace VideoPlayer
             PostMessage(m_hwndEvent, WM_APP_ERROR, new IntPtr(hr2), IntPtr.Zero);
         }
 
-        protected void CreateSession()
+        protected void CreateSession(bool isCloseCurrent)
         {
             //Close the old session, if any.
-            CloseSession();
-
+            if (isCloseCurrent)
+            {
+                CloseSession();
+            }
             //Create the media session.
             MFError throwonhr = MFExtern.MFCreateMediaSession(null, out m_pSession);
 
@@ -435,7 +452,7 @@ namespace VideoPlayer
 
         protected void StartPlayback()
         {
-            TRACE("CPlayer::StartPlayback");
+            TRACE("CPlayer.StartPlayback");
 
             Debug.Assert(m_pSession != null);
 
@@ -445,7 +462,7 @@ namespace VideoPlayer
 
         protected void CreateMediaSource(string sURL)
         {
-            TRACE("CPlayer::CreateMediaSource");
+            TRACE("CPlayer.CreateMediaSource");
 
             IMFSourceResolver pSourceResolver;
             object pSource;
@@ -478,9 +495,77 @@ namespace VideoPlayer
             }
         }
 
+        public HResult CreateMediaSource(string ip, int port)
+        {
+            TRACE("CPlayer.CreateMediaSource(...)");
+            HResult hr = HResult.S_OK;
+            m_pSource = null;
+
+            NetworkSource pSource;
+            ThrowIfError(NetworkSource.CreateInstance(out pSource));
+            pSource.Opened += PSource_Opened;
+            hr = pSource.Open(ip, port);
+
+            //Get the IMFMediaSource interface from the media source.
+            m_pSource = pSource;
+            return hr;
+        }
+
+        private void PSource_Opened(object sender, EventArgs e)
+        {
+            TRACE("CPlayer.PSource_Opened");
+
+            //1. Create a new media session.
+            //2. Create the media source.
+            //3. Create the topology.
+            //4. Queue the topology [asynchronous]
+            //5. Start playback [asynchronous - does not happen in this method.]
+
+            HResult hr = HResult.S_OK;
+            try
+            {
+                IMFTopology pTopology = null;
+
+                //Create the media session.
+                CreateSession(false);
+
+                //Create a partial topology.
+                CreateTopologyFromSource(out pTopology);
+
+                //Set the topology on the media session.
+                hr = m_pSession.SetTopology(0, pTopology);
+                MFError.ThrowExceptionForHR(hr);
+
+                //Set our state to "open pending"
+                m_state = PlayerState.OpenPending;
+                NotifyState();
+
+                SafeRelease(pTopology);
+
+                //If SetTopology succeeded, the media session will queue an
+                //MESessionTopologySet event.
+            }
+            catch (Exception ce)
+            {
+                hr = (HResult)ce.HResult;
+                NotifyError(hr);
+                m_state = PlayerState.Ready;
+            }
+
+            ThrowIfError(hr);
+        }
+
+        private void ThrowIfError(HResult hr)
+        {
+            if (!MFError.Succeeded(hr))
+            {
+                MFError.ThrowExceptionForHR(hr);
+            }
+        }
+
         protected void CreateTopologyFromSource(out IMFTopology ppTopology)
         {
-            TRACE("CPlayer::CreateTopologyFromSource");
+            TRACE("CPlayer.CreateTopologyFromSource");
 
             Debug.Assert(m_pSession != null);
             Debug.Assert(m_pSource != null);
@@ -529,7 +614,7 @@ namespace VideoPlayer
         {
             MFError throwonhr;
 
-            TRACE("CPlayer::AddBranchToPartialTopology");
+            TRACE("CPlayer.AddBranchToPartialTopology");
 
             Debug.Assert(pTopology != null);
 
@@ -621,7 +706,7 @@ namespace VideoPlayer
                 hr = pSourceSD.GetStreamIdentifier(out streamID); //Just for debugging, ignore any failures.
                 if (MFError.Failed(hr))
                 {
-                    TRACE("IMFStreamDescriptor::GetStreamIdentifier" + hr.ToString());
+                    TRACE("IMFStreamDescriptor.GetStreamIdentifier" + hr.ToString());
                 }
 
                 //Get the media type handler for the stream.
@@ -677,7 +762,7 @@ namespace VideoPlayer
         {
             HResult hr;
             object o;
-            TRACE("CPlayer::OnTopologyReady");
+            TRACE("CPlayer.OnTopologyReady");
 
             //Ask for the IMFVideoDisplayControl interface.
             //This interface is implemented by the EVR and is
@@ -718,7 +803,7 @@ namespace VideoPlayer
 
         protected void OnSessionStarted(IMFMediaEvent pEvent)
         {
-            TRACE("CPlayer::OnSessionStarted");
+            TRACE("CPlayer.OnSessionStarted");
 
             m_state = PlayerState.Started;
             NotifyState();
@@ -726,7 +811,7 @@ namespace VideoPlayer
 
         protected void OnSessionPaused(IMFMediaEvent pEvent)
         {
-            TRACE("CPlayer::OnSessionPaused");
+            TRACE("CPlayer.OnSessionPaused");
 
             m_state = PlayerState.Paused;
             NotifyState();
@@ -734,16 +819,16 @@ namespace VideoPlayer
 
         protected void OnSessionClosed(IMFMediaEvent pEvent)
         {
-            TRACE("CPlayer::OnSessionClosed");
+            TRACE("CPlayer.OnSessionClosed");
 
             //The application thread is waiting on this event, inside the
-            //CPlayer::CloseSession method.
+            //CPlayer.CloseSession method.
             m_hCloseEvent.Set();
         }
 
         protected void OnPresentationEnded(IMFMediaEvent pEvent)
         {
-            TRACE("CPlayer::OnPresentationEnded");
+            TRACE("CPlayer.OnPresentationEnded");
 
             //The session puts itself into the stopped state autmoatically.
 

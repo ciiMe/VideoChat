@@ -98,7 +98,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="INetworkStreamProvider.cs" />
-    <Compile Include="IPlayerUI.cs" />
+    <Compile Include="IPlayer.cs" />
+    <Compile Include="MediaSource\CBaseAttributes.cs" />
     <Compile Include="MediaSource\MediaBase.cs" />
     <Compile Include="MediaSource\MediaStream.cs" />
     <Compile Include="MediaSource\MediaStructs.cs" />

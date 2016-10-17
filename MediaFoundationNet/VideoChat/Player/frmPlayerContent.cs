@@ -1,10 +1,11 @@
 using System;
 using System.Windows.Forms;
 using System.Diagnostics;
+using MediaFoundation;
 
 namespace VideoPlayer
 {
-    public partial class frmPlayerContent : Form, IPlayerUI
+    public partial class frmPlayerContent : Form, IPlayer
     {
         const int WM_PAINT = 0x000F;
         const int WM_SIZE = 0x0005;
@@ -121,9 +122,9 @@ namespace VideoPlayer
             }
         }
 
-        public void Open(string url)
+        public HResult Open(string url)
         {
-            var hr = (int)_player.OpenURL(url);
+            var hr = _player.Open(url);
 
             if (hr >= 0)
             {
@@ -131,9 +132,28 @@ namespace VideoPlayer
             }
             else
             {
-                MsgDialog.NotifyError(this, "Could not open the file.", hr);
+                MsgDialog.NotifyError(this, "Could not open the file.", (int)hr);
                 UpdateUI(Handle, BasePlayer.PlayerState.Ready);
             }
+
+            return hr;
+        }
+
+        public HResult Open(string ip, int port)
+        {
+            var hr = _player.Open(ip, port);
+
+            if (hr >= 0)
+            {
+                UpdateUI(Handle, BasePlayer.PlayerState.OpenPending);
+            }
+            else
+            {
+                MsgDialog.NotifyError(this, "Could not open the file.", (int)hr);
+                UpdateUI(Handle, BasePlayer.PlayerState.Ready);
+            }
+
+            return hr;
         }
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
@@ -145,6 +165,11 @@ namespace VideoPlayer
                 _player.Shutdown();
                 _player = null;
             }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

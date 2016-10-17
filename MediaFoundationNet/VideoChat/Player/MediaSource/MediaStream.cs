@@ -467,9 +467,55 @@ namespace VideoPlayer.MediaSource
             }
         }
 
-        private bool ShouldDropSample(IMFSample spSample)
+        private bool ShouldDropSample(IMFSample pSample)
         {
-            throw new NotImplementedException();
+            if (!_isVideo)
+            {
+                return false;
+            }
+
+            bool fCleanPoint = MFExtern.MFGetAttributeUINT32(pSample, MFSampleExtension_CleanPoint, 0) > 0;
+            bool fDrop = _flRate != 1.0f && !fCleanPoint;
+
+            long hnsTimeStamp = 0;
+            ThrowIfError(pSample.GetSampleTime(out hnsTimeStamp));
+
+            if (!fDrop && _fDropTime)
+            {
+                if (_fInitDropTime)
+                {
+                    _hnsStartDroppingAt = hnsTimeStamp;
+                    _fInitDropTime = false;
+                }
+
+                fDrop = hnsTimeStamp < (_hnsStartDroppingAt + _hnsAmountToDrop);
+                if (!fDrop)
+                {
+                    Debug.WriteLine($"Ending dropping time on sample ts={hnsTimeStamp} _hnsStartDroppingAt={_hnsStartDroppingAt} _hnsAmountToDrop={_hnsAmountToDrop}");
+                    ResetDropTime();
+                }
+                else
+                {
+                    Debug.WriteLine($"Dropping sample ts={hnsTimeStamp} _hnsStartDroppingAt={_hnsStartDroppingAt} _hnsAmountToDrop={_hnsAmountToDrop}");
+                }
+            }
+
+            if (!fDrop && (_eDropMode == MFQualityDropMode.Mode1 || _fWaitingForCleanPoint))
+            {
+                // Only key frames
+                fDrop = !fCleanPoint;
+                if (fCleanPoint)
+                {
+                    _fWaitingForCleanPoint = false;
+                }
+
+                if (fDrop)
+                {
+                    Debug.WriteLine($"Dropping sample ts={hnsTimeStamp}");
+                }
+            }
+
+            return fDrop;
         }
 
         #region IMFMediaEventGenerator
@@ -577,7 +623,20 @@ namespace VideoPlayer.MediaSource
 
         public HResult GetStreamDescriptor(out IMFStreamDescriptor ppStreamDescriptor)
         {
-            throw new NotImplementedException();
+            HResult hr = HResult.S_OK;
+            ppStreamDescriptor = null;
+
+            lock (_spSource)
+            {
+                hr = CheckShutdown();
+
+                if (MFError.Succeeded(hr))
+                {
+                    ppStreamDescriptor = _spStreamDescriptor;
+                }
+
+                return hr;
+            }
         }
 
         public HResult RequestSample(object pToken)

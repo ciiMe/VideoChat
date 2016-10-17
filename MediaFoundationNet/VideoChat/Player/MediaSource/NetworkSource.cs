@@ -10,9 +10,9 @@ using static MediaFoundation.Misc.ConstPropVariant;
 
 namespace VideoPlayer.MediaSource
 {
-    public class NetworkSource : IMFMediaEventGenerator, IMFMediaSource
+    public class NetworkSource : IMFMediaSource
     {
-        object _critSec;
+        private object _critSec;
         private SourceState _eSourceState;
         IMFMediaEventQueue _spEventQueue;
         INetworkMediaAdapter _networkStreamAdapter;
@@ -21,30 +21,93 @@ namespace VideoPlayer.MediaSource
         // Collection of streams associated with the source
         List<IMFMediaStream> _streams;
 
-        event EventHandler _openedEvent;
         float _flRate;
+
+        private bool _isOpenEventInvoked;
+        public event EventHandler Opened;
 
         public NetworkSource()
         {
+            _critSec = new object();
+            _eSourceState = SourceState.SourceState_Invalid;
             _streams = new List<IMFMediaStream>();
+        }
 
+        internal static HResult CreateInstance(out NetworkSource pSource)
+        {
+            HResult hr = HResult.S_OK;
+
+            try
+            {
+                var spSource = new NetworkSource();
+                spSource.Initialize();
+                pSource = spSource;
+            }
+            catch (Exception ex)
+            {
+                pSource = null;
+                hr = (HResult)ex.HResult;
+            }
+
+            return hr;
+        }
+
+        private void Initialize()
+        {
             // Create the event queue helper.
             _networkStreamAdapter = new NetworkMediaAdapter();
             _networkStreamAdapter.OnDataArrived += _networkStreamAdapter_OnDataArrived;
+            _isOpenEventInvoked = false;
+
+            // Create the event queue helper.
+            ThrowIfError(MFExtern.MFCreateEventQueue(out _spEventQueue));
         }
 
-        public void Open(string ip, int port)
+        public HResult Open(string ip, int port)
         {
-            _networkStreamAdapter.Open(ip, port);
+            if (_eSourceState != SourceState.SourceState_Invalid)
+            {
+                Throw(HResult.MF_E_INVALIDREQUEST);
+            }
+
+            // If everything is ok now we are waiting for network client to connect. 
+            // Change state to opening.
+            _eSourceState = SourceState.SourceState_Opening;
+            lock (_critSec)
+            {
+                return _networkStreamAdapter.Open(ip, port);
+            }
         }
 
         private void _networkStreamAdapter_OnDataArrived(StspOperation operation, BufferPacket packet)
+        {
+            ThrowIfError(CheckShutdown());
+            lock (_critSec)
+            {
+                try
+                {
+                    processPacket(operation, packet);
+                }
+                catch (Exception ex)
+                {
+                    HandleError(ex.HResult);
+                }
+            }
+        }
+
+        private void processPacket(StspOperation operation, BufferPacket packet)
         {
             switch (operation)
             {
                 // We received server description
                 case StspOperation.StspOperation_ServerDescription:
+                    ThrowIfError(CheckShutdown());
+                    if (_eSourceState != SourceState.SourceState_Opening)
+                    {
+                        Throw(HResult.MF_E_UNEXPECTED);
+                    }
                     ProcessServerDescription(packet);
+                    invokeOpenedEvent();
                     break;
                 // We received a media sample
                 case StspOperation.StspOperation_ServerSample:
@@ -60,9 +123,27 @@ namespace VideoPlayer.MediaSource
             }
         }
 
+        private void invokeOpenedEvent()
+        {
+            if (_isOpenEventInvoked)
+            {
+                return;
+            }
+            try
+            {
+                Opened?.Invoke(this, new EventArgs());
+            }
+            catch (Exception ex)
+            {
+
+            }
+            _isOpenEventInvoked = true;
+        }
+
         private void ProcessServerDescription(BufferPacket data)
         {
             StspDescription desc = new StspDescription();
+            var dataLen = data.Length;
             int descSize = Marshal.SizeOf(typeof(StspDescription));
             int streamDescSize = Marshal.SizeOf(typeof(StspStreamDescription));
 
@@ -71,7 +152,7 @@ namespace VideoPlayer.MediaSource
             // Size of the packet should match size described in the packet (size of Description structure + size of attribute blob)
             var cbConstantSize = Convert.ToInt32(descSize + (desc.cNumStreams - 1) * streamDescSize);
             // Check if the input parameters are valid. We only support 2 streams.
-            if (cbConstantSize < Marshal.SizeOf(desc) || desc.cNumStreams == 0 || desc.cNumStreams > 2 || data.Length < cbConstantSize)
+            if (cbConstantSize < Marshal.SizeOf(desc) || desc.cNumStreams == 0 || desc.cNumStreams > 2 || dataLen < cbConstantSize)
             {
                 ThrowIfError(HResult.MF_E_UNSUPPORTED_FORMAT);
             }
@@ -98,7 +179,7 @@ namespace VideoPlayer.MediaSource
                 }
 
                 // Validate the parameters. Limit the total size of attributes to 64kB.
-                if ((data.Length != (cbConstantSize + cbAttributeSize)) || (cbAttributeSize > 0x10000))
+                if ((dataLen != (cbConstantSize + cbAttributeSize)) || (cbAttributeSize > 0x10000))
                 {
                     Throw(HResult.MF_E_UNSUPPORTED_FORMAT);
                 }
@@ -389,8 +470,7 @@ namespace VideoPlayer.MediaSource
             lock (_critSec)
             {
                 HResult hr = CheckShutdown();
-
-                if (MFError.Succeeded(hr) && (_eSourceState == SourceState.SourceState_Opening || _eSourceState == SourceState.SourceState_Invalid || null != _spPresentationDescriptor))
+                if (MFError.Succeeded(hr) && (_eSourceState == SourceState.SourceState_Opening || _eSourceState == SourceState.SourceState_Invalid || null == _spPresentationDescriptor))
                 {
                     hr = HResult.MF_E_NOT_INITIALIZED;
                 }

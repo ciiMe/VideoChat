@@ -1,6 +1,7 @@
 ﻿using MediaFoundation;
 using MediaFoundation.Misc;
 using System;
+using System.Net.Sockets;
 using VideoPlayer.Network;
 
 namespace VideoPlayer.Stream
@@ -28,10 +29,21 @@ namespace VideoPlayer.Stream
 
                 return HResult.S_OK;
             }
+            catch (SocketException sex)
+            {
+                switch (sex.NativeErrorCode)
+                {
+                    case 10060:
+                        return HResult.MF_E_NET_TIMEOUT;
+                    case 10061:
+                        return HResult.MF_E_NET_REDIRECT;
+                    default:
+                        return HResult.MF_E_NETWORK_RESOURCE_FAILURE;
+                }
+            }
             catch (Exception ex)
             {
-                HandleError(ex.HResult);
-                return HResult.E_FAIL;
+                return HResult.MF_E_NETWORK_RESOURCE_FAILURE;
             }
         }
 
@@ -66,11 +78,6 @@ namespace VideoPlayer.Stream
         {
             var bytes = BufferWrapper.BuildOperationBytes(operation);
             _networkSender.Send(bytes);
-        }
-
-        private void HandleError(int hr)
-        {
-            Throw((HResult)hr);
         }
 
         private void ThrowIfError(HResult hr)
