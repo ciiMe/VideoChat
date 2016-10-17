@@ -54,7 +54,8 @@ namespace VideoPlayer.Network
                 return hr;
             }
             var data = packet.Get();
-            Marshal.Copy(data, 0, pBuffer, packet.Length);
+            Marshal.Copy(data, 0, pBuffer, data.Length);
+            spMediaBuffer.SetCurrentLength(data.Length);
             spMediaBuffer.Unlock();
             mediaBuffer = spMediaBuffer;
             return hr;
