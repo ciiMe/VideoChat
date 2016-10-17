@@ -59,18 +59,24 @@ namespace VideoPlayer.Network
             _callBack = callback;
         }
 
-        public void AddBuffer(byte[] buffer, int dataLength)
+        /// <summary>
+        /// Add received buffer to packet list.
+        /// </summary>
+        /// <param name="buffer">The received buffer.</param>
+        /// <param name="startPosition">The start position of the valid data.</param>
+        /// <param name="dataLength">The total length of the valid data.</param>
+        public void AddBuffer(byte[] buffer, int startPosition, int dataLength)
         {
             var offset = 0;
             if (IsEmpty())
             {
-                _length = BitConverter.ToInt32(buffer, 0);
-                _option = (StspOperation)BitConverter.ToInt32(buffer, 4);
+                _length = BitConverter.ToInt32(buffer, startPosition);
+                _option = (StspOperation)BitConverter.ToInt32(buffer, startPosition + 4);
                 offset = 8;
             }
             var bufferValidLen = dataLength - offset;
             var data = new byte[bufferValidLen];
-            Array.Copy(buffer, offset, data, 0, bufferValidLen);
+            Array.Copy(buffer, startPosition + offset, data, 0, bufferValidLen);
 
             _receivedBuffers.Add(new ReceivedBuffer
             {
@@ -139,6 +145,7 @@ namespace VideoPlayer.Network
         private int _port;
 
         private byte[] _currentBuffer;
+        private int _currentBufferStartPosition;
         private int _currentBufferDataLength;
 
         private NetworkPacket _penddingPacket;
@@ -185,11 +192,15 @@ namespace VideoPlayer.Network
             {
                 //todo: throw working exception...
             }
-            _currentBuffer = new byte[ReceiveBufferSize];
-            _currentBufferDataLength = 0;
-            _penddingPacket = new NetworkPacket(callback);
 
-            _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
+            lock (_critSec)
+            {
+                _currentBuffer = new byte[ReceiveBufferSize];
+                _currentBufferDataLength = 0;
+                _penddingPacket = new NetworkPacket(callback);
+
+                _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
+            }
         }
 
         private void handleDateReceived(IAsyncResult ar)
@@ -198,20 +209,24 @@ namespace VideoPlayer.Network
             {
                 var socket = ar.AsyncState as Socket;
                 _currentBufferDataLength = socket.EndReceive(ar);
-
+                _currentBufferStartPosition = 0;
                 if (_currentBufferDataLength == 0)
                 {
                     return;
                 }
 
-                _penddingPacket.AddBuffer(_currentBuffer, _currentBufferDataLength);
-                if (_penddingPacket.IsFull())
-                {
-                    invokePacketComplete();
-                    PrepareNextReceive();
-                }
-
+                processReceivedData();
                 _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
+            }
+        }
+
+        private void processReceivedData()
+        {
+            _penddingPacket.AddBuffer(_currentBuffer, _currentBufferStartPosition, _currentBufferDataLength);
+            if (_penddingPacket.IsFull())
+            {
+                invokePacketComplete();
+                PrepareNextReceive();
             }
         }
 
@@ -223,6 +238,7 @@ namespace VideoPlayer.Network
 
             try
             {
+                Debug.WriteLine($"Buffer complete. Length:{_penddingPacket.Length}");
                 handler(option, new BufferPacket(data));
             }
             catch (Exception ex)
@@ -234,12 +250,18 @@ namespace VideoPlayer.Network
         private void PrepareNextReceive()
         {
             var extraLen = _penddingPacket.GetExtraDataLength();
-            if (extraLen > 0 && extraLen < _currentBufferDataLength)
+            if (extraLen <= 0 || extraLen > _currentBufferDataLength)
             {
-                Array.Copy(_currentBuffer, _currentBufferDataLength - extraLen, _currentBuffer, 0, extraLen);
-                _currentBufferDataLength = extraLen;
+                _penddingPacket.Reset();
+                return;
             }
+
+            _currentBufferStartPosition = _currentBufferDataLength - extraLen;
+            _currentBufferDataLength = extraLen;
+            Debug.WriteLine($"Buffer Prepared for next package. Length:{extraLen} from position:{_currentBufferStartPosition}");
+
             _penddingPacket.Reset();
+            processReceivedData();
         }
 
         private void handleDataSend(IAsyncResult ar)
