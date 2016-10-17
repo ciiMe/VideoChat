@@ -396,7 +396,7 @@ namespace VideoPlayer.MediaSource
             int cbTotalLen;
             sample.GetTotalLength(out cbTotalLen);
             var isKeyFrame = Convert.ToBoolean(sampleHeader.dwFlags & (int)StspSampleFlags.StspSampleFlag_CleanPoint);
-            Debug.WriteLine($"Received sample {sampleHeader.ullTimestamp} Duration-{sampleHeader.ullDuration} Length-cbTotalLen" + (isKeyFrame ? "key frame" : ""));
+            Debug.WriteLine($"Received sample {sampleHeader.ullTimestamp} Duration-{sampleHeader.ullDuration} Length-{cbTotalLen} " + (isKeyFrame ? "key frame" : ""));
         }
 
         void SET_SAMPLE_ATTRIBUTE(StspSampleHeader sampleHeader, IMFSample pSample, Guid flag, StspSampleFlags flagValue)
