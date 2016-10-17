@@ -234,12 +234,12 @@ namespace VideoPlayer.Network
         private void PrepareNextReceive()
         {
             var extraLen = _penddingPacket.GetExtraDataLength();
-            if (extraLen > 0)
+            if (extraLen > 0 && extraLen < _currentBufferDataLength)
             {
                 Array.Copy(_currentBuffer, _currentBufferDataLength - extraLen, _currentBuffer, 0, extraLen);
                 _currentBufferDataLength = extraLen;
             }
-            _penddingPacket.Reset(); 
+            _penddingPacket.Reset();
         }
 
         private void handleDataSend(IAsyncResult ar)
