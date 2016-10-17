@@ -22,7 +22,7 @@ namespace VideoPlayer
 
         private static void Frm_Load(object sender, EventArgs e)
         {
-            _playerUi.Open("192.168.13.210", 10010);
+            _playerUi.Open("192.168.13.209", 10010);
             (_playerUi as Form).Activate();
         }
     }

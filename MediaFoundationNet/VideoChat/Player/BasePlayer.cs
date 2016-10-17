@@ -544,6 +544,8 @@ namespace VideoPlayer
 
                 //If SetTopology succeeded, the media session will queue an
                 //MESessionTopologySet event.
+
+                hr = Play();
             }
             catch (Exception ce)
             {
