@@ -104,10 +104,10 @@ namespace VideoPlayer.Stream
                 else
                 {
                     var take = new byte[extraLen];
-                    var tmp = new byte[buffer.Length - extraLen];
+                    var left = new byte[buffer.Length - extraLen];
                     Array.Copy(buffer, take, extraLen);
-                    Array.Copy(buffer, extraLen, tmp, 0, tmp.Length);
-                    _buffers[0] = tmp;
+                    Array.Copy(buffer, extraLen, left, 0, left.Length);
+                    _buffers[0] = left;
                     packet.AddBuffer(take);
                     extraLen -= extraLen;
                 }
@@ -141,19 +141,20 @@ namespace VideoPlayer.Stream
                 var buffer = _buffers[i];
                 if (buffer.Length >= extraLen)
                 {
-                    Array.Copy(buffer, result, extraLen);
+                    Array.Copy(buffer, 0, result, pos, extraLen);
+                    pos += extraLen;
                     if (isRemove)
                     {
-                        var newBuffer = new byte[buffer.Length - extraLen];
-                        Array.Copy(buffer, extraLen, newBuffer, 0, newBuffer.Length);
-                        _buffers[0] = newBuffer;
+                        var leftBuffer = new byte[buffer.Length - extraLen];
+                        Array.Copy(buffer, extraLen, leftBuffer, 0, leftBuffer.Length);
+                        _buffers[0] = leftBuffer;
                         _bufferTotalLength -= extraLen;
                     }
                     break;
                 }
                 else
                 {
-                    Array.Copy(buffer, result, buffer.Length);
+                    Array.Copy(buffer, 0, result, pos, buffer.Length);
                     pos += buffer.Length;
                     extraLen -= buffer.Length;
                     if (isRemove)
