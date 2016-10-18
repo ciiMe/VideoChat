@@ -10,13 +10,11 @@ namespace VideoPlayer.Stream
     {
         public const int PacketHeadSize = 8;
 
-        private List<byte[]> _buffers;
-        private int _bufferTotalLength;
+        protected List<byte[]> _buffers;
 
         public BufferPacket()
         {
             _buffers = new List<byte[]>();
-            _bufferTotalLength = 0;
         }
 
         public HResult Each(BufferEventHandler handler)
@@ -31,7 +29,12 @@ namespace VideoPlayer.Stream
             {
                 try
                 {
-                    hr = handler(_buffers[i]);
+                    var buffer = _buffers[i];
+                    if (buffer.Length == 0)
+                    {
+                        continue;
+                    }
+                    hr = handler(buffer);
                     if (MFError.Failed(hr))
                     {
                         break;
@@ -54,14 +57,95 @@ namespace VideoPlayer.Stream
             }
 
             _buffers.Add(data);
-            _bufferTotalLength += data.Length;
         }
 
-        public int GetBufferLength()
+        public int GetLength()
         {
-            return _bufferTotalLength;
+            var len = 0;
+            for (int i = 0; i < _buffers.Count; i++)
+            {
+                len += _buffers[i].Length;
+            }
+
+            return len;
         }
 
+        public byte[] GetBuffer(int len)
+        {
+            return readBuffer(len, false);
+        }
+
+        public byte[] TakeBuffer(int len)
+        {
+            return readBuffer(len, true);
+        }
+
+        protected byte[] readBuffer(int len, bool isRemove)
+        {
+            if (GetLength() < len)
+            {
+                return new byte[] { };
+            }
+
+            var result = new byte[len];
+            var pos = 0;
+            var extraLen = len;
+            for (int i = 0; i < _buffers.Count; i++)
+            {
+                var buffer = _buffers[i];
+                if (buffer == null || buffer.Length == 0)
+                {
+                    _buffers.RemoveAt(i);
+                    i--;
+                }
+
+                if (buffer.Length == extraLen)
+                {
+                    if (pos == 0)
+                    {
+                        result = buffer;
+                    }
+                    else
+                    {
+                        Array.Copy(buffer, 0, result, pos, extraLen);
+                        pos += extraLen;
+                    }
+                    if (isRemove)
+                    {
+                        _buffers.RemoveAt(0);
+                    }
+                    break;
+                }
+                else if (buffer.Length > extraLen)
+                {
+                    Array.Copy(buffer, 0, result, pos, extraLen);
+                    pos += extraLen;
+                    if (isRemove)
+                    {
+                        var leftBuffer = new byte[buffer.Length - extraLen];
+                        Array.Copy(buffer, extraLen, leftBuffer, 0, leftBuffer.Length);
+                        _buffers[0] = leftBuffer;
+                    }
+                    break;
+                }
+                else
+                {
+                    Array.Copy(buffer, 0, result, pos, buffer.Length);
+                    pos += buffer.Length;
+                    extraLen -= buffer.Length;
+                    if (isRemove)
+                    {
+                        _buffers.RemoveAt(0);
+                        i--;
+                    }
+                }
+            }
+            return result;
+        }
+    }
+
+    public class NetworkBufferPacket : BufferPacket, INetworkBufferPacket
+    {
         public int GetFirstOptionDataLength()
         {
             return StreamConvertor.ReadInt32(this);
@@ -74,12 +158,12 @@ namespace VideoPlayer.Stream
 
         public bool HasOptionData()
         {
-            return _bufferTotalLength >= PacketHeadSize + GetFirstOptionDataLength();
+            return GetLength() >= PacketHeadSize + GetFirstOptionDataLength();
         }
 
         public bool IsSingleOption()
         {
-            return PacketHeadSize + GetFirstOptionDataLength() == _bufferTotalLength;
+            return PacketHeadSize + GetFirstOptionDataLength() == GetLength();
         }
 
         public IBufferPacket TakeFirstOption()
@@ -94,12 +178,18 @@ namespace VideoPlayer.Stream
             while (extraLen > 0)
             {
                 var buffer = _buffers[0];
+                if (buffer == null || buffer.Length == 0)
+                {
+                    _buffers.RemoveAt(0);
+                    continue;
+                }
 
                 if (buffer.Length <= extraLen)
                 {
                     packet.AddBuffer(buffer);
                     extraLen -= buffer.Length;
-                    _buffers.RemoveAt(0);
+
+                    _buffers.RemoveAt(0); 
                 }
                 else
                 {
@@ -107,65 +197,14 @@ namespace VideoPlayer.Stream
                     var left = new byte[buffer.Length - extraLen];
                     Array.Copy(buffer, take, extraLen);
                     Array.Copy(buffer, extraLen, left, 0, left.Length);
-                    _buffers[0] = left;
                     packet.AddBuffer(take);
                     extraLen -= extraLen;
+
+                    _buffers[0] = left; 
                 }
             }
 
             return packet;
-        }
-
-        public byte[] GetBuffer(int len)
-        {
-            return readBuffer(len, false);
-        }
-
-        public byte[] TakeBuffer(int len)
-        {
-            return readBuffer(len, true);
-        }
-
-        private byte[] readBuffer(int len, bool isRemove)
-        {
-            if (_bufferTotalLength < len)
-            {
-                return new byte[] { };
-            }
-
-            var result = new byte[len];
-            var pos = 0;
-            var extraLen = len;
-            for (int i = 0; i < _buffers.Count; i++)
-            {
-                var buffer = _buffers[i];
-                if (buffer.Length >= extraLen)
-                {
-                    Array.Copy(buffer, 0, result, pos, extraLen);
-                    pos += extraLen;
-                    if (isRemove)
-                    {
-                        var leftBuffer = new byte[buffer.Length - extraLen];
-                        Array.Copy(buffer, extraLen, leftBuffer, 0, leftBuffer.Length);
-                        _buffers[0] = leftBuffer;
-                        _bufferTotalLength -= extraLen;
-                    }
-                    break;
-                }
-                else
-                {
-                    Array.Copy(buffer, 0, result, pos, buffer.Length);
-                    pos += buffer.Length;
-                    extraLen -= buffer.Length;
-                    if (isRemove)
-                    {
-                        _buffers.RemoveAt(0);
-                        _bufferTotalLength -= buffer.Length;
-                        i--;
-                    }
-                }
-            }
-            return result;
         }
     }
 }

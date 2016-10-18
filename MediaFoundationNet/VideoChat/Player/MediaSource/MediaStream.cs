@@ -135,7 +135,7 @@ namespace VideoPlayer.MediaSource
             //Create a media type object.
             ThrowIfError(MFExtern.MFCreateMediaType(out mediaType));
 
-            if (attributesBuffer.GetFirstOptionDataLength() < pStreamDescription.cbAttributesSize || pStreamDescription.cbAttributesSize == 0)
+            if (attributesBuffer.GetLength() < pStreamDescription.cbAttributesSize || pStreamDescription.cbAttributesSize == 0)
             {
                 //Invalid stream description
                 Throw(HResult.MF_E_UNSUPPORTED_FORMAT);

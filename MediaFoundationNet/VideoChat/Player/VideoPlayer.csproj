@@ -104,7 +104,6 @@
     <Compile Include="MediaSource\MediaStream.cs" />
     <Compile Include="MediaSource\MediaStructs.cs" />
     <Compile Include="MediaSource\Validation.cs" />
-    <Compile Include="MsgDialog.cs" />
     <Compile Include="DialogInvoker.cs" />
     <Compile Include="frmPlayerContent.cs">
       <SubType>Form</SubType>

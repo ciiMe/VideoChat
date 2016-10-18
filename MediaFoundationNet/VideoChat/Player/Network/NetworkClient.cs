@@ -11,6 +11,17 @@ namespace VideoPlayer.Network
     /// </summary>
     public class NetworkClient : INetworkClient
     {
+        public const string ExceptionMessage_InvalidBuffer = "Invalid data from network stream.";
+
+        private class InvalidNetworkBufferException : Exception
+        {
+            public InvalidNetworkBufferException() :
+                base(ExceptionMessage_InvalidBuffer)
+            {
+                HResult = (int)MediaFoundation.HResult.E_INVALIDARG;
+            }
+        }
+
         private const int ReceiveBufferSize = 2 * 1024;
         private const int MaxPacketSize = 1024 * 1024;
 
@@ -19,10 +30,11 @@ namespace VideoPlayer.Network
         private int _port;
 
         private byte[] _currentBuffer;
-        private IBufferPacket _penddingPacket;
-        private MediaBufferEventHandler _callBack;
+        private INetworkBufferPacket _penddingPacket;
 
         private object _critSec;
+
+        public event MediaBufferEventHandler OnPacketReceived;
 
         public NetworkClient()
         {
@@ -58,7 +70,7 @@ namespace VideoPlayer.Network
             _socket.Send(buffer);
         }
 
-        public void StartReceive(MediaBufferEventHandler callback)
+        public void Start()
         {
             if (_penddingPacket != null)
             {
@@ -68,8 +80,7 @@ namespace VideoPlayer.Network
             lock (_critSec)
             {
                 _currentBuffer = new byte[ReceiveBufferSize];
-                _penddingPacket = new BufferPacket();
-                _callBack = callback;
+                _penddingPacket = new NetworkBufferPacket();
 
                 _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
             }
@@ -88,29 +99,38 @@ namespace VideoPlayer.Network
 
                 var data = new byte[dataLen];
                 Array.Copy(_currentBuffer, data, dataLen);
-
                 _penddingPacket.AddBuffer(data);
+
                 if (_penddingPacket.HasOptionData())
                 {
                     invokePacketComplete();
                 }
-                _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
+
+                if (_socket.Connected)
+                {
+                    _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
+                }
             }
         }
 
         private void invokePacketComplete()
         {
-            if (null == _callBack)
+            if (null == OnPacketReceived)
             {
                 return;
             }
 
+            //Debug.WriteLine($"Buffer complete. buffer length:{_penddingPacket.GetLength()} data length:{_penddingPacket.GetFirstOptionDataLength()}");
             var p = _penddingPacket.TakeFirstOption();
+            var header = StreamConvertor.TakeObject<StspOperationHeader>(p);
+            if (header.cbDataSize != p.GetLength())
+            {
+                throw new InvalidNetworkBufferException();
+            }
 
             try
             {
-                Debug.WriteLine($"Buffer complete. buffer length:{p.GetBufferLength()} data length:{p.GetFirstOptionDataLength()}");
-                _callBack(p);
+                OnPacketReceived(header.eOperation, p);
             }
             catch (Exception ex)
             {

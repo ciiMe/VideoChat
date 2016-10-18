@@ -15,6 +15,7 @@ namespace VideoPlayer.Stream
         public NetworkMediaAdapter()
         {
             _networkSender = new NetworkClient();
+            _networkSender.OnPacketReceived += invokeDataArrived;
         }
 
         public HResult Open(string ip, int port)
@@ -24,8 +25,8 @@ namespace VideoPlayer.Stream
                 ThrowIfError(CheckShutdown());
 
                 _networkSender.Connect(ip, port);
+                _networkSender.Start();
                 SendDescribeRequest();
-                _networkSender.StartReceive(invokeDataArrived);
 
                 return HResult.S_OK;
             }
@@ -59,9 +60,9 @@ namespace VideoPlayer.Stream
             return HResult.S_OK;
         }
 
-        private void invokeDataArrived(IBufferPacket data)
+        private void invokeDataArrived(StspOperation option, IBufferPacket data)
         {
-            OnDataArrived?.Invoke(data);
+            OnDataArrived?.Invoke(option, data);
         }
 
         public void SendStartRequest()

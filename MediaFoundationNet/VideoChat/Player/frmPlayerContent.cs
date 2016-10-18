@@ -46,7 +46,7 @@ namespace VideoPlayer
                     break;
 
                 case WM_APP_ERROR:
-                    MsgDialog.NotifyError(this, "An error occurred.", (int)m.WParam);
+                    Text = "An error occurred.";
                     UpdateUI(m.HWnd, BasePlayer.PlayerState.Ready);
                     break;
 
@@ -132,7 +132,7 @@ namespace VideoPlayer
             }
             else
             {
-                MsgDialog.NotifyError(this, "Could not open the file.", (int)hr);
+                Text = "Could not open the file.";
                 UpdateUI(Handle, BasePlayer.PlayerState.Ready);
             }
 
@@ -149,7 +149,7 @@ namespace VideoPlayer
             }
             else
             {
-                MsgDialog.NotifyError(this, "Could not open the file.", (int)hr);
+                Text = "Could not open the file.";
                 UpdateUI(Handle, BasePlayer.PlayerState.Ready);
             }
 
@@ -165,11 +165,6 @@ namespace VideoPlayer
                 _player.Shutdown();
                 _player = null;
             }
-        }
-
-        private void btnStart_Click(object sender, EventArgs e)
-        {
-            _player.Play();
         }
     }
 }

@@ -79,14 +79,13 @@ namespace VideoPlayer.MediaSource
             }
         }
 
-        private void _networkStreamAdapter_OnDataArrived(IBufferPacket packet)
+        private void _networkStreamAdapter_OnDataArrived(StspOperation option, IBufferPacket packet)
         {
             ThrowIfError(CheckShutdown());
             lock (_critSec)
             {
                 try
                 {
-                    var option = packet.GetFirstOperationDataType();
                     processPacket(option, packet);
                 }
                 catch (Exception ex)
@@ -144,7 +143,7 @@ namespace VideoPlayer.MediaSource
         private void ProcessServerDescription(IBufferPacket data)
         {
             StspDescription desc = new StspDescription();
-            var dataLen = data.GetBufferLength();
+            var dataLen = data.GetLength();
             int descSize = Marshal.SizeOf(typeof(StspDescription));
             int streamDescSize = Marshal.SizeOf(typeof(StspStreamDescription));
 
@@ -272,7 +271,7 @@ namespace VideoPlayer.MediaSource
 
                 // Copy the header object
                 sampleHead = StreamConvertor.TakeObject<StspSampleHeader>(packet);
-                if (!packet.HasOptionData())
+                if (packet.GetLength() < 0)
                 {
                     ThrowIfError(HResult.E_INVALIDARG);
                 }
@@ -346,7 +345,7 @@ namespace VideoPlayer.MediaSource
                 {
                     Throw(HResult.MF_E_UNEXPECTED);
                 }
-                int cbTotalLen = packet.GetBufferLength();
+                int cbTotalLen = packet.GetLength();
                 if (cbTotalLen <= 0)
                 {
                     Throw(HResult.E_INVALIDARG);

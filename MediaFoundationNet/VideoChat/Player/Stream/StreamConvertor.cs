@@ -98,30 +98,34 @@ namespace VideoPlayer.Stream
 
         public static int ReadInt32(IBufferPacket packet)
         {
-            var data = packet.GetBuffer(4);
+            var dataSize = 4;
+            var data = packet.GetBuffer(dataSize);
 
-            if (data == null || data.Length < 4)
+            if (data == null || data.Length < dataSize)
             {
                 return -1;
             }
 
-            IntPtr p = Marshal.AllocHGlobal(4);
+            IntPtr p = Marshal.AllocHGlobal(dataSize);
+            Marshal.Copy(data, 0, p, dataSize);
             var result = Marshal.ReadInt32(p);
-            Marshal.Release(p);
+            Marshal.FreeHGlobal(p);
             return result;
         }
 
         public static StspOperation ReadOption(IBufferPacket packet)
         {
-            var data = packet.GetBuffer(8);
-            if (data == null || data.Length < 8)
+            var dataSize = 8;
+            var data = packet.GetBuffer(dataSize);
+            if (data == null || data.Length < dataSize)
             {
                 return StspOperation.StspOperation_Unknown;
             }
 
-            IntPtr p = Marshal.AllocHGlobal(8);
+            IntPtr p = Marshal.AllocHGlobal(dataSize);
+            Marshal.Copy(data, 0, p, dataSize);
             var result = Marshal.ReadInt32(p, 4);
-            Marshal.Release(p);
+            Marshal.FreeHGlobal(p);
 
             if (result < (int)StspOperation.StspOperation_Unknown || result > (int)StspOperation.StspOperation_Last)
             {
@@ -164,13 +168,13 @@ namespace VideoPlayer.Stream
             if (MFError.Failed(hr))
             {
                 return hr;
-            } 
+            }
             Marshal.Copy(buffer, 0, pBuffer, buffer.Length);
             spMediaBuffer.SetCurrentLength(buffer.Length);
             spMediaBuffer.Unlock();
             mediaBuffer = spMediaBuffer;
 
             return hr;
-        }        
+        }
     }
 }

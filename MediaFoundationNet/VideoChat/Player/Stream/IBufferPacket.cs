@@ -2,7 +2,7 @@
 
 namespace VideoPlayer.Stream
 {
-    public delegate void MediaBufferEventHandler(IBufferPacket packet);
+    public delegate void MediaBufferEventHandler(StspOperation option, IBufferPacket packet);
     public delegate HResult BufferEventHandler(byte[] buffer);
     /// <summary>
     /// A packet to cache received buffer list.
@@ -22,8 +22,24 @@ namespace VideoPlayer.Stream
         /// <summary>
         /// Get the total length of received buffers.
         /// </summary>
-        int GetBufferLength();
+        int GetLength();
 
+        /// <summary>
+        /// Get the head buffer in the list.
+        /// </summary>
+        byte[] GetBuffer(int len);
+
+        /// <summary>
+        /// Take the head buffer out of the list.
+        /// </summary>
+        byte[] TakeBuffer(int len);
+    }
+
+    /// <summary>
+    /// Buffer packet for network cache, it provide more management feature.
+    /// </summary>
+    public interface INetworkBufferPacket : IBufferPacket
+    {
         /// <summary>
         /// Get the Option data length of the first option request.
         /// </summary>
@@ -48,15 +64,5 @@ namespace VideoPlayer.Stream
         /// Take the first option from the received buffer list.
         /// </summary>
         IBufferPacket TakeFirstOption();
-
-        /// <summary>
-        /// Get the head buffer in the list.
-        /// </summary>
-        byte[] GetBuffer(int len);
-
-        /// <summary>
-        /// Take the head buffer out of the list.
-        /// </summary>
-        byte[] TakeBuffer(int len);
     }
 }
