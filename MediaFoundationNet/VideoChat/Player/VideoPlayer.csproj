@@ -114,13 +114,13 @@
     </Compile>
     <Compile Include="BasePlayer.cs" />
     <Compile Include="MediaSource\NetworkSource.cs" />
-    <Compile Include="Network\BufferWrapper.cs" />
     <Compile Include="Network\ConstParameters.cs" />
     <Compile Include="Network\INetworkClient.cs" />
     <Compile Include="Network\NetworkClient.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Stream\BufferPacket.cs" />
+    <Compile Include="Stream\IBufferPacket.cs" />
     <Compile Include="Stream\INetworkMediaAdapter.cs" />
     <Compile Include="Stream\NetworkMediaAdapter.cs" />
     <Compile Include="Stream\StreamConvertor.cs" />

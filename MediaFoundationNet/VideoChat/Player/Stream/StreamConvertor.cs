@@ -1,10 +1,27 @@
-﻿using System;
+﻿using MediaFoundation;
+using MediaFoundation.Misc;
+using System;
 using System.Runtime.InteropServices;
 
 namespace VideoPlayer.Stream
 {
     public static class StreamConvertor
     {
+        public static byte[] BuildOperationBytes(StspOperation operation)
+        {
+            var opHeader = new StspOperationHeader { cbDataSize = 0, eOperation = operation };
+
+            var bytes = new byte[Marshal.SizeOf(opHeader)];
+
+            var f1 = BitConverter.GetBytes(opHeader.cbDataSize);
+            var f2 = BitConverter.GetBytes((int)opHeader.eOperation);
+
+            Array.Copy(f1, bytes, f1.Length);
+            Array.Copy(f2, 0, bytes, f1.Length, f2.Length);
+
+            return bytes;
+        }
+
         public static byte[] StructureToByte<T>(T structure)
         {
             int size = Marshal.SizeOf(typeof(T));
@@ -26,11 +43,11 @@ namespace VideoPlayer.Stream
         /// Take the object buffer from the packet and convert object buffer to struct entity.
         /// </summary>
         /// <param name="packet">The buffer where struct bytes are sasved.</param>
-        public static T TakeObject<T>(BufferPacket packet)
+        public static T TakeObject<T>(IBufferPacket packet)
         {
             //todo: convert return type as HResult.
             var size = Marshal.SizeOf(typeof(T));
-            var buffer = packet.MoveLeft(size);
+            var buffer = packet.TakeBuffer(size);
             return BytesToStruct<T>(buffer, size);
         }
 
@@ -78,5 +95,82 @@ namespace VideoPlayer.Stream
                 Marshal.FreeHGlobal(p);
             }
         }
+
+        public static int ReadInt32(IBufferPacket packet)
+        {
+            var data = packet.GetBuffer(4);
+
+            if (data == null || data.Length < 4)
+            {
+                return -1;
+            }
+
+            IntPtr p = Marshal.AllocHGlobal(4);
+            var result = Marshal.ReadInt32(p);
+            Marshal.Release(p);
+            return result;
+        }
+
+        public static StspOperation ReadOption(IBufferPacket packet)
+        {
+            var data = packet.GetBuffer(8);
+            if (data == null || data.Length < 8)
+            {
+                return StspOperation.StspOperation_Unknown;
+            }
+
+            IntPtr p = Marshal.AllocHGlobal(8);
+            var result = Marshal.ReadInt32(p, 4);
+            Marshal.Release(p);
+
+            if (result < (int)StspOperation.StspOperation_Unknown || result > (int)StspOperation.StspOperation_Last)
+            {
+                return StspOperation.StspOperation_Unknown;
+            }
+
+            return (StspOperation)result;
+        }
+
+        public static HResult ConverToMediaBuffer(byte[] buffer, out IMFMediaBuffer mediaBuffer)
+        {
+            mediaBuffer = null;
+            if (buffer == null || buffer.Length == 0)
+            {
+                return HResult.E_INVALIDARG;
+            }
+
+            IMFMediaBuffer spMediaBuffer;
+            HResult hr = MFExtern.MFCreateMemoryBuffer(buffer.Length, out spMediaBuffer);
+            if (MFError.Failed(hr))
+            {
+                return hr;
+            }
+
+            IntPtr pBuffer;
+            int cbMaxLength;
+            int cbCurrentLength;
+            //todo: call lock2d on a 2d buffer because the lock2d is more efficient.
+            /*
+            if (MFError.Succeeded(Marshal.intp spMediaBuffer.QueryInterface(IID_PPV_ARGS(&_sp2DBuffer))))
+            {
+                LONG lPitch;
+                hr = _sp2DBuffer.Lock2D(&_pBuffer, &lPitch);
+            }
+            else
+            {
+                hr = pMediaBuffer->Lock(&_pBuffer, &cbMaxLength, &cbCurrentLength);
+            }*/
+            hr = spMediaBuffer.Lock(out pBuffer, out cbMaxLength, out cbCurrentLength);
+            if (MFError.Failed(hr))
+            {
+                return hr;
+            } 
+            Marshal.Copy(buffer, 0, pBuffer, buffer.Length);
+            spMediaBuffer.SetCurrentLength(buffer.Length);
+            spMediaBuffer.Unlock();
+            mediaBuffer = spMediaBuffer;
+
+            return hr;
+        }        
     }
 }

@@ -4,8 +4,6 @@ using VideoPlayer.Stream;
 
 namespace VideoPlayer.Network
 {
-    public delegate void MediaBufferEventHandler(StspOperation operation, BufferPacket data);
-
     public interface INetworkClient
     {
         void Connect(string ip, int port);

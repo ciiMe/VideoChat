@@ -1,5 +1,4 @@
 ﻿using MediaFoundation;
-using VideoPlayer.Network;
 
 namespace VideoPlayer.Stream
 {
@@ -13,6 +12,5 @@ namespace VideoPlayer.Stream
         void SendRequest(StspOperation eOperation);
 
         event MediaBufferEventHandler OnDataArrived;
-
     }
 }

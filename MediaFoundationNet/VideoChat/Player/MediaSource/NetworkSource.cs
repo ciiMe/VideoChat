@@ -79,14 +79,15 @@ namespace VideoPlayer.MediaSource
             }
         }
 
-        private void _networkStreamAdapter_OnDataArrived(StspOperation operation, BufferPacket packet)
+        private void _networkStreamAdapter_OnDataArrived(IBufferPacket packet)
         {
             ThrowIfError(CheckShutdown());
             lock (_critSec)
             {
                 try
                 {
-                    processPacket(operation, packet);
+                    var option = packet.GetFirstOperationDataType();
+                    processPacket(option, packet);
                 }
                 catch (Exception ex)
                 {
@@ -95,9 +96,9 @@ namespace VideoPlayer.MediaSource
             }
         }
 
-        private void processPacket(StspOperation operation, BufferPacket packet)
+        private void processPacket(StspOperation option, IBufferPacket packet)
         {
-            switch (operation)
+            switch (option)
             {
                 // We received server description
                 case StspOperation.StspOperation_ServerDescription:
@@ -140,10 +141,10 @@ namespace VideoPlayer.MediaSource
             _isOpenEventInvoked = true;
         }
 
-        private void ProcessServerDescription(BufferPacket data)
+        private void ProcessServerDescription(IBufferPacket data)
         {
             StspDescription desc = new StspDescription();
-            var dataLen = data.Length;
+            var dataLen = data.GetBufferLength();
             int descSize = Marshal.SizeOf(typeof(StspDescription));
             int streamDescSize = Marshal.SizeOf(typeof(StspStreamDescription));
 
@@ -262,7 +263,7 @@ namespace VideoPlayer.MediaSource
             return hr;
         }
 
-        private void ProcessServerSample(BufferPacket packet)
+        private void ProcessServerSample(IBufferPacket packet)
         {
             if (_eSourceState == SourceState.SourceState_Started)
             {
@@ -271,7 +272,7 @@ namespace VideoPlayer.MediaSource
 
                 // Copy the header object
                 sampleHead = StreamConvertor.TakeObject<StspSampleHeader>(packet);
-                if (packet.Length <= 0)
+                if (!packet.HasOptionData())
                 {
                     ThrowIfError(HResult.E_INVALIDARG);
                 }
@@ -294,7 +295,7 @@ namespace VideoPlayer.MediaSource
             }
         }
 
-        private HResult ToMFSample(BufferPacket packet, out IMFSample sample)
+        private HResult ToMFSample(IBufferPacket packet, out IMFSample sample)
         {
             sample = null;
             IMFSample spSample;
@@ -304,22 +305,17 @@ namespace VideoPlayer.MediaSource
             {
                 return hr;
             }
-
             //Get the media buffer
             IMFMediaBuffer mediaBuffer;
-            hr = BufferWrapper.ConverToMediaBuffer(packet, out mediaBuffer);
-            if (MFError.Failed(hr))
-            {
-                return hr;
-            }
-
-            // Add media buffer to the sample
-            hr = spSample.AddBuffer(mediaBuffer);
-            if (MFError.Failed(hr))
-            {
-                return hr;
-            }
-
+            hr = packet.Each((buffer) =>
+              {
+                  hr = StreamConvertor.ConverToMediaBuffer(buffer, out mediaBuffer);
+                  if (MFError.Failed(hr))
+                  {
+                      return hr;
+                  }
+                  return spSample.AddBuffer(mediaBuffer);
+              });
             sample = spSample;
             return hr;
         }
@@ -341,17 +337,16 @@ namespace VideoPlayer.MediaSource
             return hr;
         }
 
-        private void ProcessServerFormatChange(BufferPacket packet)
+        private void ProcessServerFormatChange(IBufferPacket packet)
         {
             IntPtr ptr;
             try
             {
                 if (_eSourceState != SourceState.SourceState_Started)
                 {
-
                     Throw(HResult.MF_E_UNEXPECTED);
                 }
-                int cbTotalLen = packet.Length;
+                int cbTotalLen = packet.GetBufferLength();
                 if (cbTotalLen <= 0)
                 {
                     Throw(HResult.E_INVALIDARG);
@@ -372,7 +367,7 @@ namespace VideoPlayer.MediaSource
 
                 // Prepare buffer where we will copy attributes to
                 ptr = Marshal.AllocHGlobal(streamDesc.cbAttributesSize);
-                var data = packet.MoveLeft(streamDesc.cbAttributesSize);
+                var data = packet.TakeBuffer(streamDesc.cbAttributesSize);
                 Marshal.Copy(data, 0, ptr, streamDesc.cbAttributesSize);
 
                 IMFMediaType spMediaType;

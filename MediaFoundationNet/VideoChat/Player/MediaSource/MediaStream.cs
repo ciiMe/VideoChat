@@ -98,7 +98,7 @@ namespace VideoPlayer.MediaSource
             _spSource = pSource;
         }
 
-        public static HResult CreateInstance(StspStreamDescription pStreamDescription, BufferPacket pAttributesBuffer, NetworkSource pSource, out MediaStream ppStream)
+        public static HResult CreateInstance(StspStreamDescription pStreamDescription, IBufferPacket pAttributesBuffer, NetworkSource pSource, out MediaStream ppStream)
         {
             ppStream = null;
             HResult hr = HResult.S_OK;
@@ -121,7 +121,7 @@ namespace VideoPlayer.MediaSource
             return hr;
         }
 
-        private void Initialize(StspStreamDescription pStreamDescription, BufferPacket attributesBuffer)
+        private void Initialize(StspStreamDescription pStreamDescription, IBufferPacket attributesBuffer)
         {
             //Create the media event queue. 
             ThrowIfError(MFExtern.MFCreateEventQueue(out _spEventQueue));
@@ -135,7 +135,7 @@ namespace VideoPlayer.MediaSource
             //Create a media type object.
             ThrowIfError(MFExtern.MFCreateMediaType(out mediaType));
 
-            if (attributesBuffer.Length < pStreamDescription.cbAttributesSize || pStreamDescription.cbAttributesSize == 0)
+            if (attributesBuffer.GetFirstOptionDataLength() < pStreamDescription.cbAttributesSize || pStreamDescription.cbAttributesSize == 0)
             {
                 //Invalid stream description
                 Throw(HResult.MF_E_UNSUPPORTED_FORMAT);
@@ -145,7 +145,7 @@ namespace VideoPlayer.MediaSource
             var pAttributes = Marshal.AllocHGlobal(pStreamDescription.cbAttributesSize);
             try
             {
-                Marshal.Copy(attributesBuffer.MoveLeft(pStreamDescription.cbAttributesSize), 0, pAttributes, pStreamDescription.cbAttributesSize);
+                Marshal.Copy(attributesBuffer.TakeBuffer(pStreamDescription.cbAttributesSize), 0, pAttributes, pStreamDescription.cbAttributesSize);
                 ThrowIfError(MFExtern.MFInitAttributesFromBlob(mediaType, pAttributes, pStreamDescription.cbAttributesSize));
             }
             finally

@@ -59,9 +59,9 @@ namespace VideoPlayer.Stream
             return HResult.S_OK;
         }
 
-        private void invokeDataArrived(StspOperation option, BufferPacket data)
+        private void invokeDataArrived(IBufferPacket data)
         {
-            OnDataArrived?.Invoke(option, data);
+            OnDataArrived?.Invoke(data);
         }
 
         public void SendStartRequest()
@@ -76,7 +76,7 @@ namespace VideoPlayer.Stream
 
         public void SendRequest(StspOperation operation)
         {
-            var bytes = BufferWrapper.BuildOperationBytes(operation);
+            var bytes = StreamConvertor.BuildOperationBytes(operation);
             _networkSender.Send(bytes);
         }
 
