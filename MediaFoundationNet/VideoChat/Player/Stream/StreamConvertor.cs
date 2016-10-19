@@ -135,16 +135,17 @@ namespace VideoPlayer.Stream
             return (StspOperation)result;
         }
 
-        public static HResult ConverToMediaBuffer(byte[] buffer, out IMFMediaBuffer mediaBuffer)
+        public static HResult ConverToMediaBuffer(IBufferPacket packet, out IMFMediaBuffer mediaBuffer)
         {
             mediaBuffer = null;
-            if (buffer == null || buffer.Length == 0)
+            var dataLength = packet.GetLength();
+            if (packet == null || dataLength == 0)
             {
                 return HResult.E_INVALIDARG;
             }
 
             IMFMediaBuffer spMediaBuffer;
-            HResult hr = MFExtern.MFCreateMemoryBuffer(buffer.Length, out spMediaBuffer);
+            HResult hr = MFExtern.MFCreateMemoryBuffer(dataLength, out spMediaBuffer);
             if (MFError.Failed(hr))
             {
                 return hr;
@@ -169,6 +170,7 @@ namespace VideoPlayer.Stream
             {
                 return hr;
             }
+            var buffer = packet.TakeBuffer(dataLength);
             Marshal.Copy(buffer, 0, pBuffer, buffer.Length);
             spMediaBuffer.SetCurrentLength(buffer.Length);
             spMediaBuffer.Unlock();

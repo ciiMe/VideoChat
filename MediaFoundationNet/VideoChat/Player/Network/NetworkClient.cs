@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
+using System.Threading;
 using VideoPlayer.Stream;
 
 namespace VideoPlayer.Network
@@ -30,15 +31,21 @@ namespace VideoPlayer.Network
         private int _port;
 
         private byte[] _currentBuffer;
+        private object _bufferLock;
+
         private INetworkBufferPacket _penddingPacket;
+        private object _penddingPacketLock;
 
-        private object _critSec;
-
+        private Thread _packetEventInvoker;
+        private bool _isStarted;
         public event MediaBufferEventHandler OnPacketReceived;
 
         public NetworkClient()
         {
-            _critSec = new object();
+            _bufferLock = new object();
+            _isStarted = false;
+
+            _penddingPacketLock = new object();
         }
 
         public void Connect(string ip, int port)
@@ -51,6 +58,7 @@ namespace VideoPlayer.Network
 
         public void Close()
         {
+            _isStarted = false;
             _socket.Close();
         }
 
@@ -76,39 +84,73 @@ namespace VideoPlayer.Network
             {
                 //todo: throw working exception...
             }
+            _currentBuffer = new byte[ReceiveBufferSize];
+            _penddingPacket = new NetworkBufferPacket();
 
-            lock (_critSec)
+            _packetEventInvoker = new Thread(new ThreadStart(eventInvokerHandler));
+            _isStarted = true;
+            _packetEventInvoker.Start();
+
+            doReceive();
+        }
+
+        private void doReceive()
+        {
+            if (!_isStarted || !_socket.Connected)
             {
-                _currentBuffer = new byte[ReceiveBufferSize];
-                _penddingPacket = new NetworkBufferPacket();
-
+                return;
+            }
+            lock (_bufferLock)
+            {
                 _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
             }
         }
 
         private void handleDateReceived(IAsyncResult ar)
         {
-            lock (_critSec)
+            var socket = ar.AsyncState as Socket;
+            if (!socket.Connected)
             {
-                var socket = ar.AsyncState as Socket;
+                return;
+            }
+
+            byte[] data;
+
+            lock (_bufferLock)
+            {
                 var dataLen = socket.EndReceive(ar);
                 if (dataLen == 0)
                 {
                     return;
                 }
-
-                var data = new byte[dataLen];
+                data = new byte[dataLen];
                 Array.Copy(_currentBuffer, data, dataLen);
+            }
+            lock (_penddingPacketLock)
+            {
                 _penddingPacket.AddBuffer(data);
+            }
+            doReceive();
+        }
 
-                if (_penddingPacket.HasOptionData())
+        private void eventInvokerHandler()
+        {
+            var hasOption = false;
+
+            while (_isStarted)
+            {
+                lock (_penddingPacketLock)
+                {
+                    hasOption = _penddingPacket.HasOptionData();
+                }
+
+                if (hasOption)
                 {
                     invokePacketComplete();
                 }
-
-                if (_socket.Connected)
+                else
                 {
-                    _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
+                    Thread.Sleep(1);
                 }
             }
         }
@@ -121,7 +163,12 @@ namespace VideoPlayer.Network
             }
 
             //Debug.WriteLine($"Buffer complete. buffer length:{_penddingPacket.GetLength()} data length:{_penddingPacket.GetFirstOptionDataLength()}");
-            var p = _penddingPacket.TakeFirstOption();
+            IBufferPacket p;
+            lock (_penddingPacketLock)
+            {
+                p = _penddingPacket.TakeFirstOption();
+            }
+
             var header = StreamConvertor.TakeObject<StspOperationHeader>(p);
             if (header.cbDataSize != p.GetLength())
             {

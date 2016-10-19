@@ -7,12 +7,12 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using VideoPlayer.Network;
 using static MediaFoundation.Misc.ConstPropVariant;
+using System.Threading.Tasks;
 
 namespace VideoPlayer.MediaSource
 {
     public class NetworkSource : IMFMediaSource
     {
-        private object _critSec;
         private SourceState _eSourceState;
         IMFMediaEventQueue _spEventQueue;
         INetworkMediaAdapter _networkStreamAdapter;
@@ -28,7 +28,6 @@ namespace VideoPlayer.MediaSource
 
         public NetworkSource()
         {
-            _critSec = new object();
             _eSourceState = SourceState.SourceState_Invalid;
             _streams = new List<IMFMediaStream>();
         }
@@ -73,28 +72,22 @@ namespace VideoPlayer.MediaSource
             // If everything is ok now we are waiting for network client to connect. 
             // Change state to opening.
             _eSourceState = SourceState.SourceState_Opening;
-            lock (_critSec)
-            {
-                return _networkStreamAdapter.Open(ip, port);
-            }
+            return _networkStreamAdapter.Open(ip, port);
         }
 
         private void _networkStreamAdapter_OnDataArrived(StspOperation option, IBufferPacket packet)
         {
             ThrowIfError(CheckShutdown());
-            lock (_critSec)
+            try
             {
-                try
-                {
-                    processPacket(option, packet);
-                }
-                catch (Exception ex)
-                {
-                    HandleError(ex.HResult);
-                }
+                processPacket(option, packet);
+            }
+            catch (Exception ex)
+            {
+                HandleError(ex.HResult);
             }
         }
-
+         
         private void processPacket(StspOperation option, IBufferPacket packet)
         {
             switch (option)
@@ -304,17 +297,21 @@ namespace VideoPlayer.MediaSource
             {
                 return hr;
             }
+             
             //Get the media buffer
             IMFMediaBuffer mediaBuffer;
-            hr = packet.Each((buffer) =>
-              {
-                  hr = StreamConvertor.ConverToMediaBuffer(buffer, out mediaBuffer);
-                  if (MFError.Failed(hr))
-                  {
-                      return hr;
-                  }
-                  return spSample.AddBuffer(mediaBuffer);
-              });
+            hr = StreamConvertor.ConverToMediaBuffer(packet, out mediaBuffer);
+            if (MFError.Failed(hr))
+            {
+                return hr;
+            }
+
+            hr = spSample.AddBuffer(mediaBuffer);
+            if (MFError.Failed(hr))
+            {
+                return hr;
+            }
+
             sample = spSample;
             return hr;
         }
@@ -387,31 +384,24 @@ namespace VideoPlayer.MediaSource
         public HResult BeginGetEvent(IMFAsyncCallback pCallback, object punkState)
         {
             HResult hr = HResult.S_OK;
-            lock (_critSec)
+            hr = CheckShutdown();
+            if (MFError.Succeeded(hr))
             {
-                hr = CheckShutdown();
-                if (MFError.Succeeded(hr))
-                {
-                    hr = _spEventQueue.BeginGetEvent(pCallback, punkState);
-                }
-                return hr;
+                hr = _spEventQueue.BeginGetEvent(pCallback, punkState);
             }
+            return hr;
         }
 
         public HResult EndGetEvent(IMFAsyncResult pResult, out IMFMediaEvent ppEvent)
         {
             HResult hr = HResult.S_OK;
             ppEvent = null;
-
-            lock (_critSec)
+            hr = CheckShutdown();
+            if (MFError.Succeeded(hr))
             {
-                hr = CheckShutdown();
-                if (MFError.Succeeded(hr))
-                {
-                    hr = _spEventQueue.EndGetEvent(pResult, out ppEvent);
-                }
-                return hr;
+                hr = _spEventQueue.EndGetEvent(pResult, out ppEvent);
             }
+            return hr;
         }
 
         public HResult GetEvent(MFEventFlag dwFlags, out IMFMediaEvent ppEvent)
@@ -422,15 +412,12 @@ namespace VideoPlayer.MediaSource
             var hr = HResult.S_OK;
             IMFMediaEventQueue spQueue = null;
             ppEvent = null;
-            lock (_critSec)
+            // Check shutdown
+            hr = CheckShutdown();
+            // Get the pointer to the event queue.
+            if (MFError.Succeeded(hr))
             {
-                // Check shutdown
-                hr = CheckShutdown();
-                // Get the pointer to the event queue.
-                if (MFError.Succeeded(hr))
-                {
-                    spQueue = _spEventQueue;
-                }
+                spQueue = _spEventQueue;
             }
 
             // Now get the event.
@@ -445,15 +432,12 @@ namespace VideoPlayer.MediaSource
         public HResult QueueEvent(MediaEventType met, Guid guidExtendedType, HResult hrStatus, ConstPropVariant pvValue)
         {
             HResult hr = HResult.S_OK;
-            lock (_critSec)
+            hr = CheckShutdown();
+            if (MFError.Succeeded(hr))
             {
-                hr = CheckShutdown();
-                if (MFError.Succeeded(hr))
-                {
-                    hr = _spEventQueue.QueueEventParamVar(met, guidExtendedType, hrStatus, pvValue);
-                }
-                return hr;
+                hr = _spEventQueue.QueueEventParamVar(met, guidExtendedType, hrStatus, pvValue);
             }
+            return hr;
         }
         #endregion
 
@@ -461,36 +445,30 @@ namespace VideoPlayer.MediaSource
         public HResult CreatePresentationDescriptor(out IMFPresentationDescriptor ppPresentationDescriptor)
         {
             ppPresentationDescriptor = null;
-            lock (_critSec)
+            HResult hr = CheckShutdown();
+            if (MFError.Succeeded(hr) && (_eSourceState == SourceState.SourceState_Opening || _eSourceState == SourceState.SourceState_Invalid || null == _spPresentationDescriptor))
             {
-                HResult hr = CheckShutdown();
-                if (MFError.Succeeded(hr) && (_eSourceState == SourceState.SourceState_Opening || _eSourceState == SourceState.SourceState_Invalid || null == _spPresentationDescriptor))
-                {
-                    hr = HResult.MF_E_NOT_INITIALIZED;
-                }
-
-                if (MFError.Succeeded(hr))
-                {
-                    hr = _spPresentationDescriptor.Clone(out ppPresentationDescriptor);
-                }
-
-                return hr;
+                hr = HResult.MF_E_NOT_INITIALIZED;
             }
+
+            if (MFError.Succeeded(hr))
+            {
+                hr = _spPresentationDescriptor.Clone(out ppPresentationDescriptor);
+            }
+
+            return hr;
         }
 
         public HResult GetCharacteristics(out MFMediaSourceCharacteristics pdwCharacteristics)
         {
             pdwCharacteristics = MFMediaSourceCharacteristics.None;
-            lock (_critSec)
+            HResult hr = CheckShutdown();
+            if (MFError.Succeeded(hr))
             {
-                HResult hr = CheckShutdown();
-                if (MFError.Succeeded(hr))
-                {
-                    pdwCharacteristics = MFMediaSourceCharacteristics.IsLive;
-                }
-
-                return hr;
+                pdwCharacteristics = MFMediaSourceCharacteristics.IsLive;
             }
+
+            return hr;
         }
 
         public HResult Pause()
@@ -500,34 +478,31 @@ namespace VideoPlayer.MediaSource
 
         public HResult Shutdown()
         {
-            lock (_critSec)
+            HResult hr = CheckShutdown();
+
+            if (MFError.Succeeded(hr))
             {
-                HResult hr = CheckShutdown();
-
-                if (MFError.Succeeded(hr))
+                if (_spEventQueue != null)
                 {
-                    if (_spEventQueue != null)
-                    {
-                        _spEventQueue.Shutdown();
-                    }
-                    if (_networkStreamAdapter != null)
-                    {
-                        _networkStreamAdapter.Close();
-                    }
-
-                    foreach (var stream in _streams)
-                    {
-                        (stream as MediaStream).Shutdown();
-                    }
-
-                    _eSourceState = SourceState.SourceState_Shutdown;
-                    _streams.Clear();
                     _spEventQueue.Shutdown();
-                    _networkStreamAdapter = null;
+                }
+                if (_networkStreamAdapter != null)
+                {
+                    _networkStreamAdapter.Close();
                 }
 
-                return hr;
+                foreach (var stream in _streams)
+                {
+                    (stream as MediaStream).Shutdown();
+                }
+
+                _eSourceState = SourceState.SourceState_Shutdown;
+                _streams.Clear();
+                _spEventQueue.Shutdown();
+                _networkStreamAdapter = null;
             }
+
+            return hr;
         }
 
         public HResult Start(IMFPresentationDescriptor pPresentationDescriptor, Guid pguidTimeFormat, ConstPropVariant pvarStartPos)
@@ -555,18 +530,15 @@ namespace VideoPlayer.MediaSource
                 return HResult.MF_E_UNSUPPORTED_TIME_FORMAT;
             }
 
-            lock (_critSec)
+            if (_eSourceState != SourceState.SourceState_Stopped && _eSourceState != SourceState.SourceState_Started)
             {
-                if (_eSourceState != SourceState.SourceState_Stopped && _eSourceState != SourceState.SourceState_Started)
-                {
-                    hr = HResult.MF_E_INVALIDREQUEST;
-                }
+                hr = HResult.MF_E_INVALIDREQUEST;
+            }
 
-                if (MFError.Succeeded(hr))
-                {
-                    // Check if the presentation description is valid.
-                    hr = ValidatePresentationDescriptor(pPresentationDescriptor);
-                }
+            if (MFError.Succeeded(hr))
+            {
+                // Check if the presentation description is valid.
+                hr = ValidatePresentationDescriptor(pPresentationDescriptor);
             }
 
             if (MFError.Succeeded(hr))

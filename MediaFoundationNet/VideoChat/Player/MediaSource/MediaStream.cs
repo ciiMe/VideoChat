@@ -396,7 +396,7 @@ namespace VideoPlayer.MediaSource
             int cbTotalLen;
             sample.GetTotalLength(out cbTotalLen);
             var isKeyFrame = Convert.ToBoolean(sampleHeader.dwFlags & (int)StspSampleFlags.StspSampleFlag_CleanPoint);
-            Debug.WriteLine($"Received sample {sampleHeader.ullTimestamp} Duration-{sampleHeader.ullDuration} Length-{cbTotalLen} " + (isKeyFrame ? "key frame" : ""));
+            //Debug.WriteLine($"{DateTime.Now.ToString()} Received sample {sampleHeader.ullTimestamp} Duration-{sampleHeader.ullDuration} Length-{cbTotalLen} " + (isKeyFrame ? "key frame" : ""));
         }
 
         void SET_SAMPLE_ATTRIBUTE(StspSampleHeader sampleHeader, IMFSample pSample, Guid flag, StspSampleFlags flagValue)
@@ -652,7 +652,7 @@ namespace VideoPlayer.MediaSource
                         // We cannot be asked for a sample unless we are in started state
                         Throw(HResult.MF_E_INVALIDREQUEST);
                     }
-
+                     
                     // Put token onto the list to return it when we have a sample ready
                     _tokens.Enqueue(pToken);
 

@@ -46,7 +46,7 @@ namespace VideoPlayer
                     break;
 
                 case WM_APP_ERROR:
-                    Text = "An error occurred.";
+                    Text = "An error occurred:" + DateTime.Now.ToString("HH:mm:ss.fff");
                     UpdateUI(m.HWnd, BasePlayer.PlayerState.Ready);
                     break;
 
