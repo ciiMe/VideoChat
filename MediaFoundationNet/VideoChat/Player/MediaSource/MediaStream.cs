@@ -393,10 +393,12 @@ namespace VideoPlayer.MediaSource
             SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFSampleExtension_RepeatFirstField, StspSampleFlags.StspSampleFlag_RepeatFirstField);
             SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFSampleExtension_SingleField, StspSampleFlags.StspSampleFlag_SingleField);
 
+            /* show debug info...
             int cbTotalLen;
             sample.GetTotalLength(out cbTotalLen);
             var isKeyFrame = Convert.ToBoolean(sampleHeader.dwFlags & (int)StspSampleFlags.StspSampleFlag_CleanPoint);
-            //Debug.WriteLine($"{DateTime.Now.ToString()} Received sample {sampleHeader.ullTimestamp} Duration-{sampleHeader.ullDuration} Length-{cbTotalLen} " + (isKeyFrame ? "key frame" : ""));
+            Debug.WriteLine($"{DateTime.Now.ToString()} Received sample {sampleHeader.ullTimestamp} Duration-{sampleHeader.ullDuration} Length-{cbTotalLen} " + (isKeyFrame ? "key frame" : ""));
+            */
         }
 
         void SET_SAMPLE_ATTRIBUTE(StspSampleHeader sampleHeader, IMFSample pSample, Guid flag, StspSampleFlags flagValue)
@@ -491,12 +493,12 @@ namespace VideoPlayer.MediaSource
                 fDrop = hnsTimeStamp < (_hnsStartDroppingAt + _hnsAmountToDrop);
                 if (!fDrop)
                 {
-                    Debug.WriteLine($"Ending dropping time on sample ts={hnsTimeStamp} _hnsStartDroppingAt={_hnsStartDroppingAt} _hnsAmountToDrop={_hnsAmountToDrop}");
+                    //Debug.WriteLine($"Ending dropping time on sample ts={hnsTimeStamp} _hnsStartDroppingAt={_hnsStartDroppingAt} _hnsAmountToDrop={_hnsAmountToDrop}");
                     ResetDropTime();
                 }
                 else
                 {
-                    Debug.WriteLine($"Dropping sample ts={hnsTimeStamp} _hnsStartDroppingAt={_hnsStartDroppingAt} _hnsAmountToDrop={_hnsAmountToDrop}");
+                    //Debug.WriteLine($"Dropping sample ts={hnsTimeStamp} _hnsStartDroppingAt={_hnsStartDroppingAt} _hnsAmountToDrop={_hnsAmountToDrop}");
                 }
             }
 
@@ -511,7 +513,7 @@ namespace VideoPlayer.MediaSource
 
                 if (fDrop)
                 {
-                    Debug.WriteLine($"Dropping sample ts={hnsTimeStamp}");
+                    //Debug.WriteLine($"Dropping sample ts={hnsTimeStamp}");
                 }
             }
 
@@ -652,7 +654,9 @@ namespace VideoPlayer.MediaSource
                         // We cannot be asked for a sample unless we are in started state
                         Throw(HResult.MF_E_INVALIDREQUEST);
                     }
-                     
+
+                    Debug.WriteLine($"{DateTime.Now.ToString("mm:ss.fff")} Reqeust sample, sample coune in cache:{_samples.Count}");
+
                     // Put token onto the list to return it when we have a sample ready
                     _tokens.Enqueue(pToken);
 
@@ -766,6 +770,56 @@ namespace VideoPlayer.MediaSource
                 ResetDropTime();
 
                 return HResult.S_OK;
+            }
+        }
+
+        public HResult SetRate(float rate)
+        {
+            lock (_spSource)
+            {
+                try
+                {
+                    ThrowIfError(CheckShutdown());
+
+                    _flRate = rate;
+                    if (_flRate != 1.0f)
+                    {
+                        CleanSampleQueue();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    HandleError(ex.HResult);
+                }
+
+                return HResult.S_OK;
+            }
+        }
+
+        private void CleanSampleQueue()
+        {
+            object spEntry;
+            IMFSample spSample = null;
+
+            // For video streams leave first key frame.
+            if (_isVideo)
+            {
+                while (_samples.Count > 0)
+                {
+                    spEntry = _samples.Dequeue();
+
+                    if (spEntry is IMFSample && Convert.ToBoolean(MFExtern.MFGetAttributeUINT32(spSample, MFSampleExtension_CleanPoint, 0)))
+                    {
+                        break;
+                    }
+                }
+            }
+
+            _samples.Clear();
+
+            if (spSample != null)
+            {
+                _samples.Enqueue(spSample);
             }
         }
 
