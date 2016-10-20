@@ -7,20 +7,19 @@ using MediaFoundation;
 using MediaFoundation.EVR;
 using MediaFoundation.Misc;
 using VideoPlayer.MediaSource;
+using VideoPlayer.WindowsExtern;
 
 namespace VideoPlayer
 {
     public class BasePlayer : COMBase, IMFAsyncCallback, IPlayer
     {
-        [DllImport("user32", CharSet = CharSet.Auto)]
-        private extern static int PostMessage(IntPtr handle, int msg, IntPtr wParam, IntPtr lParam);
-
-        const int WM_APP = 0x8000;
-        const int WM_APP_ERROR = WM_APP + 2;
-        const int WM_APP_NOTIFY = WM_APP + 1;
+        const int WM_APP_ERROR = Win32.WM_APP + 2;
+        const int WM_APP_NOTIFY = Win32.WM_APP + 1;
         const int WAIT_TIMEOUT = 258;
 
         const int MF_VERSION = 0x10070;
+
+        static Guid MF_RATE_CONTROL_SERVICE = new Guid(0x866fa297, 0xb802, 0x4bf8, 0x9d, 0xc9, 0x5e, 0x3b, 0x6a, 0x9f, 0x53, 0xc9);
 
         public enum PlayerState
         {
@@ -131,6 +130,53 @@ namespace VideoPlayer
             return hr;
         }
 
+        private void networkSource_Opened(object sender, EventArgs e)
+        {
+            TRACE("CPlayer.PSource_Opened");
+
+            //1. Create a new media session.
+            //2. Create the media source.
+            //3. Create the topology.
+            //4. Queue the topology [asynchronous]
+            //5. Start playback [asynchronous - does not happen in this method.]
+
+            HResult hr = HResult.S_OK;
+            try
+            {
+                IMFTopology pTopology = null;
+
+                //Create the media session.
+                CreateSession(false);
+
+                //Create a partial topology.
+                CreateTopologyFromSource(out pTopology);
+
+                //Set the topology on the media session.
+                hr = m_pSession.SetTopology(0, pTopology);
+                MFError.ThrowExceptionForHR(hr);
+
+                //Set our state to "open pending"
+                m_state = PlayerState.OpenPending;
+                NotifyState();
+
+                SafeRelease(pTopology);
+
+                //If SetTopology succeeded, the media session will queue an
+                //MESessionTopologySet event.
+                
+                SetRate(15);
+                hr = Play();
+            }
+            catch (Exception ce)
+            {
+                hr = (HResult)ce.HResult;
+                NotifyError(hr);
+                m_state = PlayerState.Ready;
+            }
+
+            ThrowIfError(hr);
+        }
+
         public HResult Play()
         {
             TRACE("CPlayer.Play");
@@ -158,6 +204,31 @@ namespace VideoPlayer
                 hr = (HResult)Marshal.GetHRForException(ce);
                 NotifyError(hr);
             }
+
+            return hr;
+        }
+
+        /// <summary>
+        /// Set the playback rate.
+        /// </summary> 
+        public HResult SetRate(float rate)
+        {
+            HResult hr = HResult.S_OK;
+            object rateControlObject;
+            IMFRateControl pRateControl = null;
+
+            // Get the rate control object from the Media Session.
+            hr = MFExtern.MFGetService(m_pSession, MFServices.MF_RATE_CONTROL_SERVICE, typeof(IMFRateControl).GUID, out rateControlObject);
+
+            // Set the playback rate.
+            if (Succeeded(hr))
+            {
+                pRateControl = rateControlObject as IMFRateControl;
+                hr = pRateControl.SetRate(false, rate);
+            }
+
+            // Clean up.
+            SafeRelease(pRateControl);
 
             return hr;
         }
@@ -383,7 +454,7 @@ namespace VideoPlayer
         //NotifyState: Notifies the application when the state changes.
         protected void NotifyState()
         {
-            PostMessage(m_hwndEvent, WM_APP_NOTIFY, new IntPtr((int)m_state), IntPtr.Zero);
+            Win32.PostMessage(m_hwndEvent, WM_APP_NOTIFY, new IntPtr((int)m_state), IntPtr.Zero);
         }
 
         //NotifyState: Notifies the application when an error occurs.
@@ -392,7 +463,7 @@ namespace VideoPlayer
             int hr2 = (int)hr;
             TRACE("NotifyError: 0x" + hr2.ToString("X"));
             m_state = PlayerState.Ready;
-            PostMessage(m_hwndEvent, WM_APP_ERROR, new IntPtr(hr2), IntPtr.Zero);
+            Win32.PostMessage(m_hwndEvent, WM_APP_ERROR, new IntPtr(hr2), IntPtr.Zero);
         }
 
         protected void CreateSession(bool isCloseCurrent)
@@ -503,58 +574,12 @@ namespace VideoPlayer
 
             NetworkSource pSource;
             ThrowIfError(NetworkSource.CreateInstance(out pSource));
-            pSource.Opened += PSource_Opened;
+            pSource.Opened += networkSource_Opened;
             hr = pSource.Open(ip, port);
 
             //Get the IMFMediaSource interface from the media source.
             m_pSource = pSource;
             return hr;
-        }
-
-        private void PSource_Opened(object sender, EventArgs e)
-        {
-            TRACE("CPlayer.PSource_Opened");
-
-            //1. Create a new media session.
-            //2. Create the media source.
-            //3. Create the topology.
-            //4. Queue the topology [asynchronous]
-            //5. Start playback [asynchronous - does not happen in this method.]
-
-            HResult hr = HResult.S_OK;
-            try
-            {
-                IMFTopology pTopology = null;
-
-                //Create the media session.
-                CreateSession(false);
-
-                //Create a partial topology.
-                CreateTopologyFromSource(out pTopology);
-
-                //Set the topology on the media session.
-                hr = m_pSession.SetTopology(0, pTopology);
-                MFError.ThrowExceptionForHR(hr);
-
-                //Set our state to "open pending"
-                m_state = PlayerState.OpenPending;
-                NotifyState();
-
-                SafeRelease(pTopology);
-
-                //If SetTopology succeeded, the media session will queue an
-                //MESessionTopologySet event.
-
-                hr = Play();
-            }
-            catch (Exception ce)
-            {
-                hr = (HResult)ce.HResult;
-                NotifyError(hr);
-                m_state = PlayerState.Ready;
-            }
-
-            ThrowIfError(hr);
         }
 
         private void ThrowIfError(HResult hr)

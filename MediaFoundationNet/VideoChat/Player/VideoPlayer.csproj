@@ -42,7 +42,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <UseVSHostingProcess>false</UseVSHostingProcess>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
@@ -92,9 +92,15 @@
     <Reference Include="MediaFoundation.Extension">
       <HintPath>..\..\Lib\MediaFoundation.Extension.dll</HintPath>
     </Reference>
+    <Reference Include="SlimDX, Version=4.0.13.43, Culture=neutral, PublicKeyToken=b1b0c32fd1ffe4f9, processorArchitecture=x86">
+      <HintPath>..\packages\SlimDX.4.0.13.44\lib\NET40\SlimDX.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="INetworkStreamProvider.cs" />
@@ -123,6 +129,7 @@
     <Compile Include="Stream\INetworkMediaAdapter.cs" />
     <Compile Include="Stream\NetworkMediaAdapter.cs" />
     <Compile Include="Stream\StreamConvertor.cs" />
+    <Compile Include="WindowsExtern\Win32.cs" />
     <EmbeddedResource Include="frmPlayerContent.resx">
       <SubType>Designer</SubType>
       <DependentUpon>frmPlayerContent.cs</DependentUpon>
@@ -138,6 +145,7 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="app.config" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

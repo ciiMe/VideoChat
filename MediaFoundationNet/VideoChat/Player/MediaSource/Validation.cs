@@ -25,7 +25,7 @@ namespace VideoPlayer.MediaSource
     // Description of an media type for validation
     public struct MediaTypeValidationDescriptor
     {
-        GUID guidSubtype;
+        Guid guidSubtype;
         bool fVideo;
         int cAttributes;
         AttributeValidationDescriptor attributes;

@@ -33,17 +33,7 @@ namespace VideoPlayer
         StspOperation_ServerFormatChange,
         StspOperation_Last,
     };
-
-    public struct GUID
-    {
-        long Data1;
-        short Data2;
-        short Data3;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-        char[] Data4;
-    }
-
+    
     public struct StspStreamDescription
     {
         public Guid guiMajorType;

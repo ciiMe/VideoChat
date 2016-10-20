@@ -8,11 +8,14 @@ using System.Collections.Generic;
 using VideoPlayer.Network;
 using static MediaFoundation.Misc.ConstPropVariant;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace VideoPlayer.MediaSource
 {
-    public class NetworkSource : IMFMediaSource
+    public class NetworkSource : IMFMediaSource, IMFGetService, IMFRateControl
     {
+        public static Guid IID_IUnknown = new Guid("00000000-0000-0000-C000-000000000046");
+
         private SourceState _eSourceState;
         IMFMediaEventQueue _spEventQueue;
         INetworkMediaAdapter _networkStreamAdapter;
@@ -87,7 +90,7 @@ namespace VideoPlayer.MediaSource
                 HandleError(ex.HResult);
             }
         }
-         
+
         private void processPacket(StspOperation option, IBufferPacket packet)
         {
             switch (option)
@@ -297,7 +300,7 @@ namespace VideoPlayer.MediaSource
             {
                 return hr;
             }
-             
+
             //Get the media buffer
             IMFMediaBuffer mediaBuffer;
             hr = StreamConvertor.ConverToMediaBuffer(packet, out mediaBuffer);
@@ -554,6 +557,11 @@ namespace VideoPlayer.MediaSource
             return hr;
         }
 
+        private void callDoStart(object option)
+        {
+            doStart((CSourceOperation)option);
+        }
+
         private void doStart(CSourceOperation pOp)
         {
             Debug.Assert(pOp.Type == SourceOperationType.Operation_Start);
@@ -618,8 +626,13 @@ namespace VideoPlayer.MediaSource
                 Type = SourceOperationType.Operation_Stop
             };
             // Queue asynchronous stop
-            doStop(spStopOp);
+            //doStop(spStopOp);
             return hr;
+        }
+
+        private void callDoStop(object option)
+        {
+            doStop((CSourceOperation)option);
         }
 
         private void doStop(CSourceOperation pOp)
@@ -645,6 +658,140 @@ namespace VideoPlayer.MediaSource
             }
             // Send the "stopped" event. This might include a failure code.
             _spEventQueue.QueueEventParamVar(MediaEventType.MESourceStopped, Guid.Empty, hr, null);
+        }
+        #endregion
+
+        #region IMFRateControl
+        public HResult GetRate(ref bool pfThin, out float pflRate)
+        {
+            lock (this)
+            {
+                pfThin = false;
+                pflRate = _flRate;
+
+                return HResult.S_OK;
+            }
+        }
+
+        public HResult SetRate(bool fThin, float flRate)
+        {
+            if (fThin)
+            {
+                return HResult.MF_E_THINNING_UNSUPPORTED;
+            }
+            if (!isRateSupported(flRate, out flRate))
+            {
+                return HResult.MF_E_UNSUPPORTED_RATE;
+            }
+
+            lock (this)
+            {
+                HResult hr = HResult.S_OK;
+
+                if (flRate == _flRate)
+                {
+                    return HResult.S_OK;
+                }
+                asyncRun(startSetRate, _flRate);
+                return hr;
+            }
+        }
+
+        private void startSetRate(object rateValue)
+        {
+            doSetRate(Convert.ToSingle(rateValue));
+        }
+
+        delegate void ThreadHandler(object value);
+
+        private void asyncRun(ThreadHandler handler, object parameter)
+        {
+            ParameterizedThreadStart ts = new ParameterizedThreadStart(handler);
+            Thread thread = new Thread(ts);
+            thread.Start();
+        }
+
+        private bool isRateSupported(float flRate, out float pflAdjustedRate)
+        {
+            pflAdjustedRate = 1;
+            if (flRate < 0.00001f && flRate > -0.00001f)
+            {
+                pflAdjustedRate = 0.0f;
+                return true;
+            }
+            else if (flRate < 1.0001f && flRate > 0.9999f)
+            {
+                pflAdjustedRate = 1.0f;
+                return true;
+            }
+            return false;
+        }
+
+        private void doSetRate(float rate)
+        {
+            HResult hr = HResult.S_OK;
+            try
+            {
+                for (int i = 0; i < _streams.Count; i++)
+                {
+                    MediaStream pStream = _streams[i] as MediaStream;
+
+                    if (pStream.IsActive)
+                    {
+                        ThrowIfError(pStream.Flush());
+                        ThrowIfError(pStream.SetRate(rate));
+                    }
+                }
+
+                _flRate = rate;
+            }
+            catch (Exception ex)
+            {
+                hr = (HResult)ex.HResult;
+            }
+            // Send the "rate changed" event. This might include a failure code.
+            _spEventQueue.QueueEventParamVar(MediaEventType.MESourceRateChanged, Guid.Empty, hr, null);
+        }
+        #endregion
+
+        #region IMFGetService
+        public HResult GetService(Guid guidService, Guid riid, out object ppvObject)
+        {
+            HResult hr = HResult.MF_E_UNSUPPORTED_SERVICE;
+            ppvObject = null;
+
+            if (guidService == MFServices.MF_RATE_CONTROL_SERVICE)
+            {
+                hr = QueryInterface(riid, out ppvObject);
+            }
+
+            return hr;
+        }
+
+        private HResult QueryInterface(Guid riid, out object ppv)
+        {
+            ppv = null;
+
+            HResult hr = HResult.S_OK;
+
+            if (riid == IID_IUnknown || riid == typeof(IMFMediaSource).GUID || riid == typeof(IMFMediaEventGenerator).GUID)
+            {
+                ppv = this;
+            }
+            else if (riid == typeof(IMFGetService).GUID)
+            {
+                ppv = this;
+            }
+            else if (riid == typeof(IMFRateControl).GUID)
+            {
+                ppv = this;
+            }
+            else
+            {
+                hr = HResult.E_NOINTERFACE;
+            }
+
+            return hr;
         }
         #endregion
 

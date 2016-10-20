@@ -2,20 +2,14 @@ using System;
 using System.Windows.Forms;
 using System.Diagnostics;
 using MediaFoundation;
+using VideoPlayer.WindowsExtern;
 
 namespace VideoPlayer
 {
     public partial class frmPlayerContent : Form, IPlayer
     {
-        const int WM_PAINT = 0x000F;
-        const int WM_SIZE = 0x0005;
-        const int WM_ERASEBKGND = 0x0014;
-        const int WM_CHAR = 0x0102;
-        const int WM_SETCURSOR = 0x0020;
-        const int WM_APP = 0x8000;
-
-        const int WM_APP_NOTIFY = WM_APP + 1;   // wparam = state
-        const int WM_APP_ERROR = WM_APP + 2;    // wparam = HRESULT
+        const int WM_APP_NOTIFY = Win32.WM_APP + 1;   // wparam = state
+        const int WM_APP_ERROR = Win32.WM_APP + 2;    // wparam = HRESULT
 
         private BasePlayer _player;
         private bool _isRepaintClient = true;
@@ -24,20 +18,20 @@ namespace VideoPlayer
         {
             switch (m.Msg)
             {
-                case WM_PAINT:
+                case Win32.WM_PAINT:
                     OnPaint(m.HWnd);
                     base.WndProc(ref m);
                     break;
 
-                case WM_SIZE:
+                case Win32.WM_SIZE:
                     _player.ResizeVideo((short)(m.LParam.ToInt32() & 65535), (short)(m.LParam.ToInt32() >> 16));
                     break;
 
-                case WM_CHAR:
+                case Win32.WM_CHAR:
                     //OnKeyPress(m.WParam.ToInt32());
                     break;
 
-                case WM_SETCURSOR:
+                case Win32.WM_SETCURSOR:
                     m.Result = new IntPtr(1);
                     break;
 
