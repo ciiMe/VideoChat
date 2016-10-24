@@ -1,7 +1,6 @@
-﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VideoPlayer.Network;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VideoPlayer;
+using VideoPlayer.Stream;
 
 namespace NetworkBufferTest
 {
@@ -14,7 +13,7 @@ namespace NetworkBufferTest
         public void TestBytesConvert_StspOperationHeader()
         {
             //result should be:[0,0,0,0,1,0,0,0]
-            var result = BufferWrapper.BuildOperationBytes(StspOperation.StspOperation_ClientRequestDescription);
+            var result = StreamConvertor.BuildOperationBytes(StspOperation.StspOperation_ClientRequestDescription);
             Assert.IsTrue(isBytesSame(result, Bytes_ClientRequestDescription));
         }
 
@@ -34,13 +33,6 @@ namespace NetworkBufferTest
             }
 
             return true;
-        }
-
-        [TestMethod]
-        public void TestTcpConnection()
-        {
-            NetworkSource source = new NetworkSource();
-            source.Open("192.168.13.210", 10010); 
-        }
+        }         
     }
 }
