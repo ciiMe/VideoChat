@@ -35,7 +35,7 @@ namespace VideoPlayer.MediaSource
             _streams = new List<IMFMediaStream>();
         }
 
-        internal static HResult CreateInstance(out NetworkSource pSource)
+        public static HResult CreateInstance(out NetworkSource pSource)
         {
             HResult hr = HResult.S_OK;
 
@@ -77,7 +77,7 @@ namespace VideoPlayer.MediaSource
             _eSourceState = SourceState.SourceState_Opening;
             return _networkStreamAdapter.Open(ip, port);
         }
-
+        
         private void _networkStreamAdapter_OnDataArrived(StspOperation option, IBufferPacket packet)
         {
             ThrowIfError(CheckShutdown());
@@ -308,7 +308,8 @@ namespace VideoPlayer.MediaSource
             {
                 return hr;
             }
-
+            var len = 0;
+            mediaBuffer.GetCurrentLength(out len);
             hr = spSample.AddBuffer(mediaBuffer);
             if (MFError.Failed(hr))
             {

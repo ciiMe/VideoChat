@@ -9,7 +9,7 @@ namespace VideoPlayer.Stream
     public class BufferPacket : IBufferPacket
     {
         public const int PacketHeadSize = 8;
-
+        
         protected List<byte[]> _buffers;
 
         public BufferPacket()

@@ -175,7 +175,7 @@ namespace VideoPlayer.Stream
             spMediaBuffer.SetCurrentLength(buffer.Length);
             spMediaBuffer.Unlock();
             mediaBuffer = spMediaBuffer;
-
+            buffer = null;
             return hr;
         }
     }

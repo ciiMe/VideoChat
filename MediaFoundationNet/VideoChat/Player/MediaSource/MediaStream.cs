@@ -8,6 +8,46 @@ using System.Diagnostics;
 
 namespace VideoPlayer.MediaSource
 {
+    /// <summary>
+    /// Provide a struct to hold nullable data, the data may be saved in a list, but the list<> does not allow saving a null object into.
+    /// </summary>
+    public struct NullableData
+    {
+        internal object Data;
+    }
+
+    public class NullableQueue
+    {
+        private Queue<NullableData> _container;
+
+        public NullableQueue()
+        {
+            _container = new Queue<MediaSource.NullableData>();
+        }
+
+        public void Clear()
+        {
+            _container.Clear();
+        }
+
+        public int Count
+        {
+            get
+            {
+                return _container.Count;
+            }
+        }
+
+        public void Enqueue(object data)
+        {
+            _container.Enqueue(new NullableData { Data = data });
+        }
+
+        public NullableData Dequeue()
+        {
+            return _container.Count > 0 ? _container.Dequeue() : new NullableData();
+        }
+    }
 
     /*
     //
@@ -58,7 +98,7 @@ namespace VideoPlayer.MediaSource
         private IMFStreamDescriptor _spStreamDescriptor;
 
         private Queue<object> _samples;
-        private Queue<object> _tokens;
+        private NullableQueue _tokens;
 
         private int _id;
         private bool _fActive;
@@ -93,7 +133,7 @@ namespace VideoPlayer.MediaSource
             _hnsAmountToDrop = 0;
 
             _samples = new Queue<object>();
-            _tokens = new Queue<object>();
+            _tokens = new NullableQueue();
 
             _spSource = pSource;
         }
@@ -435,7 +475,7 @@ namespace VideoPlayer.MediaSource
                     {
                         // Get the request token
                         var spToken = _tokens.Dequeue();
-                        if (spToken != null)
+                        if (spToken.Data != null)
                         {
                             // If token was not null set the sample attribute.
                             ThrowIfError(spSample.SetUnknown(MFSampleExtension_Token, spToken));
@@ -655,7 +695,7 @@ namespace VideoPlayer.MediaSource
                         Throw(HResult.MF_E_INVALIDREQUEST);
                     }
 
-                    Debug.WriteLine($"{DateTime.Now.ToString("mm:ss.fff")} Reqeust sample, sample coune in cache:{_samples.Count}");
+                    //Debug.WriteLine($"{DateTime.Now.ToString("mm:ss.fff")} Reqeust sample, sample coune in cache:{_samples.Count}");
 
                     // Put token onto the list to return it when we have a sample ready
                     _tokens.Enqueue(pToken);

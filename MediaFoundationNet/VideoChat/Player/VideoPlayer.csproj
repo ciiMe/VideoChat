@@ -105,7 +105,6 @@
   <ItemGroup>
     <Compile Include="INetworkStreamProvider.cs" />
     <Compile Include="IPlayer.cs" />
-    <Compile Include="MediaSource\CBaseAttributes.cs" />
     <Compile Include="MediaSource\MediaBase.cs" />
     <Compile Include="MediaSource\MediaStream.cs" />
     <Compile Include="MediaSource\MediaStructs.cs" />
@@ -119,7 +118,6 @@
     </Compile>
     <Compile Include="BasePlayer.cs" />
     <Compile Include="MediaSource\NetworkSource.cs" />
-    <Compile Include="Network\ConstParameters.cs" />
     <Compile Include="Network\INetworkClient.cs" />
     <Compile Include="Network\NetworkClient.cs" />
     <Compile Include="Program.cs" />
