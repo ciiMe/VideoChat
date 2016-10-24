@@ -122,6 +122,15 @@
     <Compile Include="Network\NetworkClient.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Render\DrawDevice.cs" />
+    <Compile Include="Render\H264Decoder.cs" />
+    <Compile Include="Render\RenderForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Render\RenderForm.Designer.cs">
+      <DependentUpon>RenderForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Render\VideoBufferLock.cs" />
     <Compile Include="Stream\BufferPacket.cs" />
     <Compile Include="Stream\IBufferPacket.cs" />
     <Compile Include="Stream\INetworkMediaAdapter.cs" />
@@ -142,6 +151,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="Render\RenderForm.resx">
+      <DependentUpon>RenderForm.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="app.config" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
