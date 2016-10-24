@@ -54,12 +54,15 @@ namespace VideoPlayer.Network
             _port = port;
             _socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _socket.Connect(ip, port);
+
+            Debug.WriteLine($"Connected {ip}:{port}");
         }
 
         public void Close()
         {
             _isStarted = false;
             _socket.Close();
+            Debug.WriteLine($"Disonnected from {_ip}:{_port}");
         }
 
         public void Disconnect()
@@ -71,11 +74,6 @@ namespace VideoPlayer.Network
         {
             //var len = _socket.Send(buffer);
             _socket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, handleDataSend, _socket);
-        }
-
-        public void Send(IList<ArraySegment<byte>> buffer)
-        {
-            _socket.Send(buffer);
         }
 
         public void Start()

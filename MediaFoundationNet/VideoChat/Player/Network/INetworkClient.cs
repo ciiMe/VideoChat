@@ -12,8 +12,7 @@ namespace VideoPlayer.Network
         void Start();
         void Close();
         void Disconnect();
-
-        void Send(IList<ArraySegment<byte>> buffer);
+        
         void Send(byte[] buffer);
     }
 }
