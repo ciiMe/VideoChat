@@ -16,39 +16,7 @@ namespace VideoPlayer.Stream
         {
             _buffers = new List<byte[]>();
         }
-
-        public HResult Each(BufferEventHandler handler)
-        {
-            if (null == handler)
-            {
-                return HResult.E_INVALIDARG;
-            }
-            HResult hr = HResult.S_OK;
-
-            for (int i = 0; i < _buffers.Count; i++)
-            {
-                try
-                {
-                    var buffer = _buffers[i];
-                    if (buffer.Length == 0)
-                    {
-                        continue;
-                    }
-                    hr = handler(buffer);
-                    if (MFError.Failed(hr))
-                    {
-                        break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    hr = (HResult)ex.HResult;
-                }
-            }
-
-            return hr;
-        }
-
+        
         public void AddBuffer(byte[] data)
         {
             if (data == null || data.Length == 0)

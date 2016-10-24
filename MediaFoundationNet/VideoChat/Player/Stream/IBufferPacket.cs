@@ -10,11 +10,6 @@ namespace VideoPlayer.Stream
     public interface IBufferPacket
     {
         /// <summary>
-        /// Visit each item in buffer list, and then pass them as the parameter of handler.
-        /// </summary>
-        HResult Each(BufferEventHandler handler);
-
-        /// <summary>
         /// Add buffer data to the end if list.
         /// </summary> 
         void AddBuffer(byte[] data);
