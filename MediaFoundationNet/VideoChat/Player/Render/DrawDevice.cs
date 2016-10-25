@@ -8,6 +8,7 @@ using MediaFoundation.Misc;
 
 using SlimDX.Direct3D9;
 using SlimDX;
+using VideoPlayer.WindowsExtern;
 
 namespace VideoPlayer.Render
 {
@@ -135,18 +136,7 @@ namespace VideoPlayer.Render
             Debug.Assert(m_pSwapChain == null || m_pDevice == null);
             DestroyDevice();
         }
-#endif
-
-        #region Externs
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern int MulDiv(int nNumber, int nNumerator, int nDenominator);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool GetClientRect(IntPtr hWnd, out Rectangle lpRect);
-
-        #endregion
+#endif 
 
         #region Private Methods
 
@@ -172,7 +162,6 @@ namespace VideoPlayer.Render
         //
         // Set the conversion function for the specified video format.
         //-------------------------------------------------------------------
-
         private HResult SetConversionFunction(Guid subtype)
         {
             HResult hr = HResult.MF_E_INVALIDMEDIATYPE;
@@ -196,7 +185,6 @@ namespace VideoPlayer.Render
         //
         // Create Direct3D swap chains.
         //-------------------------------------------------------------------
-
         private HResult CreateSwapChains()
         {
             HResult hr = HResult.S_OK;
@@ -232,7 +220,6 @@ namespace VideoPlayer.Render
         //  The destination rectangle is letterboxed to preserve the
         //  aspect ratio of the video image.
         //-------------------------------------------------------------------
-
         private void UpdateDestinationRect()
         {
             Rectangle rcSrc = new Rectangle(0, 0, m_width, m_height);
@@ -590,7 +577,6 @@ namespace VideoPlayer.Render
         // Conversion functions
         //
         //-------------------------------------------------------------------
-
         private static byte Clip(int clr)
         {
             return (byte)(clr < 0 ? 0 : (clr > 255 ? 255 : clr));
@@ -775,11 +761,11 @@ namespace VideoPlayer.Render
             int iDstLBWidth;
             int iDstLBHeight;
 
-            if (MulDiv(rcSrc.Width, rcDst.Height, rcSrc.Height) <= rcDst.Width)
+            if (Kernal32.MulDiv(rcSrc.Width, rcDst.Height, rcSrc.Height) <= rcDst.Width)
             {
                 // Column letter boxing ("pillar box")
 
-                iDstLBWidth = MulDiv(rcDst.Height, rcSrc.Width, rcSrc.Height);
+                iDstLBWidth = Kernal32.MulDiv(rcDst.Height, rcSrc.Width, rcSrc.Height);
                 iDstLBHeight = rcDst.Height;
             }
             else
@@ -787,7 +773,7 @@ namespace VideoPlayer.Render
                 // Row letter boxing.
 
                 iDstLBWidth = rcDst.Width;
-                iDstLBHeight = MulDiv(rcDst.Width, rcSrc.Height, rcSrc.Width);
+                iDstLBHeight = Kernal32.MulDiv(rcDst.Width, rcSrc.Height, rcSrc.Width);
             }
 
             // Create a centered rectangle within the current destination rect
@@ -823,12 +809,12 @@ namespace VideoPlayer.Render
                 if (srcPAR.Numerator > srcPAR.Denominator)
                 {
                     // The source has "wide" pixels, so stretch the width.
-                    rcNewWidth = MulDiv(rc.Right, srcPAR.Numerator, srcPAR.Denominator);
+                    rcNewWidth = Kernal32.MulDiv(rc.Right, srcPAR.Numerator, srcPAR.Denominator);
                 }
                 else if (srcPAR.Numerator < srcPAR.Denominator)
                 {
                     // The source has "tall" pixels, so stretch the height.
-                    rcNewHeight = MulDiv(rc.Bottom, srcPAR.Denominator, srcPAR.Numerator);
+                    rcNewHeight = Kernal32.MulDiv(rc.Bottom, srcPAR.Denominator, srcPAR.Numerator);
                 }
                 // else: PAR is 1:1, which is a no-op.
             }
@@ -891,7 +877,7 @@ namespace VideoPlayer.Render
         public static Rectangle GetClientRect(IntPtr hWnd)
         {
             Rectangle result = new Rectangle();
-            GetClientRect(hWnd, out result);
+            Win32.GetClientRect(hWnd, out result);
             return result;
         }
 

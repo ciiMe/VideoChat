@@ -1,10 +1,9 @@
-﻿using MediaFoundation;
-
-namespace VideoPlayer
+﻿namespace VideoPlayer
 {
     public interface IPlayer
     {
-        HResult Open(string url);
-        HResult Open(string ip, int port); 
+        //todo: add more event, such as OnConnectionError,OnStart,OnStop etc.
+
+        void Open(string ip, int port);
     }
 }

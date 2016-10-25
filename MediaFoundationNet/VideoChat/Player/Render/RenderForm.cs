@@ -16,7 +16,7 @@ using VideoPlayer.Stream;
 
 namespace VideoPlayer.Render
 {
-    public partial class RenderForm : Form
+    public partial class RenderForm : Form, IPlayer
     {
         private Guid MF_MT_MAJOR_TYPE = Guid.Parse("48eba18e-f8c9-4687-bf11-0a74c9f96a8f");
         private Guid MF_MT_SUBTYPE = Guid.Parse("f7e34c9a-42e8-4714-b74b-cb29d72c35e5");
@@ -32,8 +32,9 @@ namespace VideoPlayer.Render
 
         // This is H264 Decoder MFT.
         IMFTransform pDecoderTransform = null;
-        MFTOutputDataBuffer[] outputDataBuffer;
-        IMFSample mftOutSample;
+        //decoded sample buffer cache objects.
+        MFTOutputDataBuffer[] _mftOutBufferContainer;
+        IMFSample _mftOutSample;
 
         // Note the frmae width and height need to be set based on the frame size in the MP4 file.
         public int _videoWitdh, _videoHeight;
@@ -146,11 +147,9 @@ namespace VideoPlayer.Render
             }
         }
 
-        private HResult initH264Decoder()
+        private void initH264Decoder()
         {
-            var hr = HResult.S_OK;
-            hr = pDecoderTransform.SetInputType(_videoStreamId, _videoMediaType, MFTSetTypeFlags.None);
-            ThrowIfError(hr);
+            ThrowIfError(pDecoderTransform.SetInputType(_videoStreamId, _videoMediaType, MFTSetTypeFlags.None));
 
             IMFMediaType h264OutputType;
             ThrowIfError(MFExtern.MFCreateMediaType(out h264OutputType));
@@ -159,12 +158,12 @@ namespace VideoPlayer.Render
 
             IMFAttributes attr = h264OutputType as IMFAttributes;
 
-            MFExtern.MFSetAttributeSize(attr, MF_MT_FRAME_SIZE, _videoWitdh, _videoHeight);
-            MFExtern.MFSetAttributeRatio(attr, MF_MT_FRAME_RATE, 30, 1);
-            MFExtern.MFSetAttributeRatio(attr, MF_MT_PIXEL_ASPECT_RATIO, _videoRatioN, _videoRatioD);
-            attr.SetUINT32(MF_MT_INTERLACE_MODE, 2);
+            ThrowIfError(MFExtern.MFSetAttributeSize(attr, MF_MT_FRAME_SIZE, _videoWitdh, _videoHeight));
+            ThrowIfError(MFExtern.MFSetAttributeRatio(attr, MF_MT_FRAME_RATE, 30, 1));
+            ThrowIfError(MFExtern.MFSetAttributeRatio(attr, MF_MT_PIXEL_ASPECT_RATIO, _videoRatioN, _videoRatioD));
+            ThrowIfError(attr.SetUINT32(MF_MT_INTERLACE_MODE, 2));
 
-            hr = pDecoderTransform.SetOutputType(_videoStreamId, h264OutputType, MFTSetTypeFlags.None);
+            ThrowIfError(pDecoderTransform.SetOutputType(_videoStreamId, h264OutputType, MFTSetTypeFlags.None));
 
             MFTInputStatusFlags mftStatus;
             ThrowIfError(pDecoderTransform.GetInputStatus(_videoStreamId, out mftStatus));
@@ -178,16 +177,14 @@ namespace VideoPlayer.Render
             ThrowIfError(pDecoderTransform.ProcessMessage(MFTMessageType.NotifyBeginStreaming, IntPtr.Zero));
             ThrowIfError(pDecoderTransform.ProcessMessage(MFTMessageType.NotifyStartOfStream, IntPtr.Zero));
 
-            MFExtern.MFCreateSample(out mftOutSample);
+            ThrowIfError(MFExtern.MFCreateSample(out _mftOutSample));
 
-            outputDataBuffer = new MFTOutputDataBuffer[1];
+            _mftOutBufferContainer = new MFTOutputDataBuffer[1];
             //todo:set the stream id again when receive media stream later.
-            outputDataBuffer[0].dwStreamID = _videoStreamId;
-            outputDataBuffer[0].dwStatus = 0;
-            outputDataBuffer[0].pEvents = null;
-            outputDataBuffer[0].pSample = Marshal.GetIUnknownForObject(mftOutSample);
-
-            return hr;
+            _mftOutBufferContainer[0].dwStreamID = _videoStreamId;
+            _mftOutBufferContainer[0].dwStatus = 0;
+            _mftOutBufferContainer[0].pEvents = null;
+            _mftOutBufferContainer[0].pSample = Marshal.GetIUnknownForObject(_mftOutSample);
         }
 
         private void initVideoDesctriptor(StspStreamDescription pStreamDescription, IBufferPacket attributesBuffer)
@@ -333,26 +330,50 @@ namespace VideoPlayer.Render
 
             while (true)
             {
+                IMFMediaBuffer resultBuffer;
+                //reset the cache buffer.
+                MFExtern.MFCreateMemoryBuffer(StreamInfo.cbSize, out resultBuffer);
+                _mftOutSample.RemoveAllBuffers();
+                _mftOutSample.AddBuffer(resultBuffer);
+
                 ProcessOutputStatus outputStatus;
-                var mftProcessOutput = pDecoderTransform.ProcessOutput(0, 1, outputDataBuffer, out outputStatus);
+                var mftProcessOutput = pDecoderTransform.ProcessOutput(0, 1, _mftOutBufferContainer, out outputStatus);
                 if (mftProcessOutput == HResult.MF_E_TRANSFORM_NEED_MORE_INPUT)
                 {
+                    //continue provice input data.
                     break;
+                }
+                else if (_mftOutBufferContainer[0].dwStatus == MFTOutputDataBufferFlags.Incomplete)
+                {
+                    //todo: the decoded data include more than one samples,we need to receive all data items.
                 }
                 else
                 {
                     IMFMediaBuffer buffer;
                     //todo: how can it be null???
-                    mftOutSample.ConvertToContiguousBuffer(out buffer);
-                    invokeDecodeComplete(buffer);
+                    _mftOutSample.ConvertToContiguousBuffer(out buffer);
+                    invokeDecodeComplete(buffer, StreamInfo.cbSize);
                 }
             }
 
             return hr;
         }
 
-        private void invokeDecodeComplete(IMFMediaBuffer buffer)
+        private void invokeDecodeComplete(IMFMediaBuffer buffer, int bufferLen)
         {
+            if (buffer == null)
+            {
+                return;
+            }
+
+            int len = 0;
+            buffer.GetCurrentLength(out len);
+            if (bufferLen != len)
+            {
+                //todo: throw invalid data exception.
+                return;
+            }
+
             _drawDevice.DrawFrame(buffer);
         }
 

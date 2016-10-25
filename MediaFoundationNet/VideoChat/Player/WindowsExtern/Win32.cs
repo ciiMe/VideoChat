@@ -21,6 +21,6 @@ namespace VideoPlayer.WindowsExtern
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool GetClientRect(IntPtr hWnd, out Rectangle lpRect);
+        public static extern bool GetClientRect(IntPtr hWnd, out Rectangle lpRect); 
     }
 }

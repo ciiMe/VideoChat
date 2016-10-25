@@ -110,13 +110,6 @@
     <Compile Include="MediaSource\MediaStructs.cs" />
     <Compile Include="MediaSource\Validation.cs" />
     <Compile Include="DialogInvoker.cs" />
-    <Compile Include="frmPlayerContent.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="frmPlayerContent.Designer.cs">
-      <DependentUpon>frmPlayerContent.cs</DependentUpon>
-    </Compile>
-    <Compile Include="BasePlayer.cs" />
     <Compile Include="MediaSource\NetworkSource.cs" />
     <Compile Include="Network\INetworkClient.cs" />
     <Compile Include="Network\NetworkClient.cs" />
@@ -136,11 +129,8 @@
     <Compile Include="Stream\INetworkMediaAdapter.cs" />
     <Compile Include="Stream\NetworkMediaAdapter.cs" />
     <Compile Include="Stream\StreamConvertor.cs" />
+    <Compile Include="WindowsExtern\Kernal32.cs" />
     <Compile Include="WindowsExtern\Win32.cs" />
-    <EmbeddedResource Include="frmPlayerContent.resx">
-      <SubType>Designer</SubType>
-      <DependentUpon>frmPlayerContent.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
