@@ -350,7 +350,7 @@ namespace VideoPlayer.Render
         //
         // Set the video format.
         //-------------------------------------------------------------------
-        public HResult SetVideoType(int width, int height, MFRatio ratio)
+        public HResult InitializeSetVideoSize(int width, int height, MFRatio ratio)
         {
             HResult hr = HResult.S_OK;
 

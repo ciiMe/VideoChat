@@ -6,8 +6,6 @@ namespace VideoPlayer
 {
     static class Program
     {
-        static IPlayer _playerUi;
-
         [MTAThread]
         static void Main()
         {
