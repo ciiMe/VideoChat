@@ -72,10 +72,7 @@ namespace VideoPlayer.Render
                 //todo: warn no MFT is avilalbe
             }
 
-            pDecoderTransform = obj as IMFTransform;
-            // Create H.264 decoder.
-            //CHECK_HR( CoCreateInstance(CLSID_CMSH264DecoderMFT, NULL, CLSCTX.CLSCTX_INPROC_SERVER, IID_IUnknown,   out spDecTransformUnk), "Failed to create H264 decoder MFT.\n");
-            //CHECK_HR(spDecTransformUnk.QueryInterface(IID_PPV_ARGS(&pDecoderTransform)), "Failed to get IMFTransform interface from H264 decoder MFT object.\n");
+            pDecoderTransform = obj as IMFTransform; 
         }
 
         public void initialize(int streamId, IMFMediaType mediaType)
@@ -200,12 +197,7 @@ namespace VideoPlayer.Render
             {
                 //todo: throw event to notify the client.
             }
-        }
-
-        private static void CHECK_HR(HResult hResult, string v)
-        {
-            throw new NotImplementedException();
-        }
+        } 
 
         private void ThrowIfError(HResult hr)
         {

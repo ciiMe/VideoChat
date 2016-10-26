@@ -54,7 +54,7 @@ namespace VideoPlayer.Render
                 _videoRatioD = header.VideoRatioD;
                 _videoRatioN = header.VideoRatioN;
 
-                _drawDevice.InitializeSetVideoSize(_videoWitdh, _videoHeight, new MFRatio(_videoRatioN, _videoRatioD));
+                _drawDevice.Initialize(_videoWitdh, _videoHeight, new MFRatio(_videoRatioN, _videoRatioD));
                 _decoder.initialize(_videoStreamId, _videoMediaType);
 
                 break;

@@ -11,82 +11,67 @@ using VideoPlayer.WindowsExtern;
 
 namespace VideoPlayer.Render
 {
+    struct YUYV
+    {
+        public byte Y;
+        public byte U;
+        public byte Y2;
+        public byte V;
+
+        public YUYV(byte y, byte u, byte y2, byte v)
+        {
+            Y = y;
+            U = u;
+            Y2 = y2;
+            V = v;
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct RGBQUAD
+    {
+        public byte B;
+        public byte G;
+        public byte R;
+        public byte A;
+    } 
+
     public class DrawDevice : COMBase
     {
-        #region Definitions
+        private const int NUM_BACK_BUFFERS = 2; 
 
-        private const int NUM_BACK_BUFFERS = 2;
+        private IntPtr _videoHwnd;
+        private Device _device;
+        private SwapChain _swapChain;
 
-        /// <summary>
-        /// A struct that describes a YUYV pixel
-        /// </summary>
-        private struct YUYV
-        {
-            public byte Y;
-            public byte U;
-            public byte Y2;
-            public byte V;
-
-            public YUYV(byte y, byte u, byte y2, byte v)
-            {
-                Y = y;
-                U = u;
-                Y2 = y2;
-                V = v;
-            }
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RGBQUAD
-        {
-            public byte B;
-            public byte G;
-            public byte R;
-            public byte A;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RGB24
-        {
-            public byte rgbBlue;
-            public byte rgbGreen;
-            public byte rgbRed;
-        }
-
-        #endregion
-
-        private IntPtr m_hwnd;
-        private Device m_pDevice;
-        private SwapChain m_pSwapChain;
-
-        private PresentParameters[] m_d3dpp;
+        private PresentParameters[] _d3dpp;
 
         // Format information 
-        private int m_width;
-        private int m_height;
-        private int m_lDefaultStride;
-        private MFRatio m_PixelAR;
+        private int _width;
+        private int _height;
+        private int _defaultStride;
+        private MFRatio _pixelAR;
         // Destination rectangle
-        private Rectangle m_rcDest;
+        private Rectangle _destRect;
 
         public DrawDevice()
         {
-            m_hwnd = IntPtr.Zero;
-            m_pDevice = null;
-            m_pSwapChain = null;
+            _videoHwnd = IntPtr.Zero;
+            _device = null;
+            _swapChain = null;
 
-            m_d3dpp = null;
+            _d3dpp = null;
 
-            m_width = 0;
-            m_height = 0;
-            m_lDefaultStride = 0;
-            m_PixelAR.Denominator = m_PixelAR.Numerator = 1;
-            m_rcDest = Rectangle.Empty;
+            _width = 0;
+            _height = 0;
+            _defaultStride = 0;
+            _pixelAR.Denominator = _pixelAR.Numerator = 1;
+            _destRect = Rectangle.Empty;
         }
 
         private HResult TestCooperativeLevel()
         {
-            if (m_pDevice == null)
+            if (_device == null)
             {
                 return HResult.E_FAIL;
             }
@@ -94,7 +79,7 @@ namespace VideoPlayer.Render
             HResult hr = HResult.S_OK;
 
             // Check the current status of D3D9 device.
-            SlimDX.Result r = m_pDevice.TestCooperativeLevel();
+            SlimDX.Result r = _device.TestCooperativeLevel();
 
             hr = (HResult)r.Code;
 
@@ -107,24 +92,24 @@ namespace VideoPlayer.Render
 
             PresentParameters pp = new PresentParameters();
 
-            if (m_pSwapChain != null)
+            if (_swapChain != null)
             {
-                m_pSwapChain.Dispose();
-                m_pSwapChain = null;
+                _swapChain.Dispose();
+                _swapChain = null;
             }
 
             pp.EnableAutoDepthStencil = false;
-            pp.BackBufferWidth = m_width;
-            pp.BackBufferHeight = m_height;
+            pp.BackBufferWidth = _width;
+            pp.BackBufferHeight = _height;
             pp.Windowed = true;
             pp.SwapEffect = SwapEffect.Flip;
-            pp.DeviceWindowHandle = m_hwnd;
+            pp.DeviceWindowHandle = _videoHwnd;
             pp.BackBufferFormat = Format.X8R8G8B8;
             pp.PresentFlags = PresentFlags.DeviceClip | PresentFlags.LockableBackBuffer;
             pp.PresentationInterval = PresentInterval.Immediate;
             pp.BackBufferCount = NUM_BACK_BUFFERS;
 
-            m_pSwapChain = new SwapChain(m_pDevice, pp);
+            _swapChain = new SwapChain(_device, pp);
 
             return hr;
         }
@@ -138,20 +123,21 @@ namespace VideoPlayer.Render
         //-------------------------------------------------------------------
         private void UpdateDestinationRect()
         {
-            Rectangle rcSrc = new Rectangle(0, 0, m_width, m_height);
-            Rectangle rcClient = GetClientRect(m_hwnd);
+            Rectangle rcSrc = new Rectangle(0, 0, _width, _height);
+            Rectangle rcClient;
+            Win32.GetClientRect(_videoHwnd, out rcClient);
             Rectangle rectanClient = new Rectangle(rcClient.Left, rcClient.Top, rcClient.Right - rcClient.Left, rcClient.Bottom - rcClient.Top);
 
-            rcSrc = CorrectAspectRatio(rcSrc, m_PixelAR);
+            rcSrc = CorrectAspectRatio(rcSrc, _pixelAR);
 
-            m_rcDest = LetterBoxRect(rcSrc, rectanClient);
+            _destRect = LetterBoxRect(rcSrc, rectanClient);
         }
 
         #region Public Methods
 
-        public HResult CreateDevice(IntPtr hwnd)
+        public HResult CreateDevice(IntPtr videoHwnd)
         {
-            if (m_pDevice != null)
+            if (_device != null)
             {
                 return HResult.S_OK;
             }
@@ -163,18 +149,18 @@ namespace VideoPlayer.Render
             pp[0].SwapEffect = SwapEffect.Copy;
             pp[0].PresentationInterval = PresentInterval.Immediate;
             pp[0].Windowed = true;
-            pp[0].DeviceWindowHandle = hwnd;
+            pp[0].DeviceWindowHandle = videoHwnd;
             pp[0].BackBufferHeight = 0;
             pp[0].BackBufferWidth = 0;
             pp[0].EnableAutoDepthStencil = false;
 
             using (Direct3D d = new Direct3D())
             {
-                m_pDevice = new Device(d, 0, DeviceType.Hardware, hwnd, CreateFlags.HardwareVertexProcessing | CreateFlags.FpuPreserve | CreateFlags.Multithreaded, pp);
+                _device = new Device(d, 0, DeviceType.Hardware, videoHwnd, CreateFlags.HardwareVertexProcessing | CreateFlags.FpuPreserve | CreateFlags.Multithreaded, pp);
             }
 
-            m_hwnd = hwnd;
-            m_d3dpp = pp;
+            _videoHwnd = videoHwnd;
+            _d3dpp = pp;
 
             return HResult.S_OK;
         }
@@ -183,20 +169,20 @@ namespace VideoPlayer.Render
         {
             HResult hr = HResult.S_OK;
 
-            if (m_pDevice != null)
+            if (_device != null)
             {
-                PresentParameters[] d3dpp = (PresentParameters[])m_d3dpp.Clone();
+                PresentParameters[] d3dpp = (PresentParameters[])_d3dpp.Clone();
 
                 try
                 {
-                    if (m_pSwapChain != null)
+                    if (_swapChain != null)
                     {
-                        m_pSwapChain.Dispose();
-                        m_pSwapChain = null;
+                        _swapChain.Dispose();
+                        _swapChain = null;
                     }
                     d3dpp[0].BackBufferHeight = 0;
                     d3dpp[0].BackBufferWidth = 0;
-                    Result r = m_pDevice.Reset(d3dpp);
+                    Result r = _device.Reset(d3dpp);
 
                     if (r.IsFailure)
                     {
@@ -209,9 +195,9 @@ namespace VideoPlayer.Render
                 }
             }
 
-            if (m_pDevice == null)
+            if (_device == null)
             {
-                hr = CreateDevice(m_hwnd);
+                hr = CreateDevice(_videoHwnd);
 
                 if (Failed(hr))
                 {
@@ -219,7 +205,7 @@ namespace VideoPlayer.Render
                 }
             }
 
-            if ((m_pSwapChain == null))
+            if ((_swapChain == null))
             {
                 hr = CreateSwapChains();
                 if (Failed(hr)) { return hr; }
@@ -232,29 +218,29 @@ namespace VideoPlayer.Render
 
         public void DestroyDevice()
         {
-            if (m_pSwapChain != null)
+            if (_swapChain != null)
             {
-                m_pSwapChain.Dispose();
-                m_pSwapChain = null;
+                _swapChain.Dispose();
+                _swapChain = null;
             }
-            if (m_pDevice != null)
+            if (_device != null)
             {
-                m_pDevice.Dispose();
-                m_pDevice = null;
+                _device.Dispose();
+                _device = null;
             }
         }
 
-        public HResult InitializeSetVideoSize(int width, int height, MFRatio ratio)
+        public HResult Initialize(int videoWidth, int videoHeight, MFRatio videoRatio)
         {
             HResult hr = HResult.S_OK;
 
-            m_width = width;
-            m_height = height;
-            m_PixelAR = ratio;
+            _width = videoWidth;
+            _height = videoHeight;
+            _pixelAR = videoRatio;
 
             FourCC f = new FourCC(MFMediaType.YUY2);
-            // Get the image stride. 
-            hr = MFExtern.MFGetStrideForBitmapInfoHeader(f.ToInt32(), width, out m_lDefaultStride);
+
+            hr = MFExtern.MFGetStrideForBitmapInfoHeader(f.ToInt32(), videoWidth, out _defaultStride);
 
             hr = CreateSwapChains();
             if (Failed(hr)) { goto done; }
@@ -275,7 +261,7 @@ namespace VideoPlayer.Render
             Surface pSurf = null;
             Surface pBB = null;
 
-            if (m_pDevice == null || m_pSwapChain == null)
+            if (_device == null || _swapChain == null)
             {
                 return HResult.S_OK;
             }
@@ -287,11 +273,11 @@ namespace VideoPlayer.Render
 
                 // Lock the video buffer. This method returns a pointer to the first scan
                 // line in the image, and the stride in bytes.
-                hr = locker.LockBuffer(m_lDefaultStride, m_height, out pbScanline0, out lStride);
+                hr = locker.LockBuffer(_defaultStride, _height, out pbScanline0, out lStride);
                 if (Failed(hr)) { goto done; }
 
                 // Get the swap-chain surface.
-                pSurf = m_pSwapChain.GetBackBuffer(0);
+                pSurf = _swapChain.GetBackBuffer(0);
 
                 // Lock the swap-chain surface and get Graphic stream object.
                 DataRectangle dr = pSurf.LockRectangle(LockFlags.NoSystemLock);
@@ -300,7 +286,7 @@ namespace VideoPlayer.Render
                 {
                     using (dr.Data)
                     {
-                        ApplyToD3d(dr.Data.DataPointer, dr.Pitch, pbScanline0, lStride, m_width, m_height);
+                        ApplyToD3d(dr.Data.DataPointer, dr.Pitch, pbScanline0, lStride, _width, _height);
                     }
                 }
                 finally
@@ -311,19 +297,19 @@ namespace VideoPlayer.Render
             }
 
             // Color fill the back buffer.
-            pBB = m_pDevice.GetBackBuffer(0, 0);
+            pBB = _device.GetBackBuffer(0, 0);
 
-            m_pDevice.ColorFill(pBB, Color.FromArgb(0, 0, 0x80));
+            _device.ColorFill(pBB, Color.FromArgb(0, 0, 0x80));
 
             // Blit the frame.
-            Rectangle r = new Rectangle(0, 0, m_width, m_height);
+            Rectangle r = new Rectangle(0, 0, _width, _height);
 
-            res = m_pDevice.StretchRectangle(pSurf, r, pBB, m_rcDest, TextureFilter.Linear);
+            res = _device.StretchRectangle(pSurf, r, pBB, _destRect, TextureFilter.Linear);
             hr = (HResult)res.Code;
 
             if (res.IsSuccess)
             {
-                res = m_pDevice.Present();
+                res = _device.Present();
                 hr = (HResult)res.Code;
             }
 
@@ -335,15 +321,13 @@ namespace VideoPlayer.Render
         }
 
         #endregion
-
-        #region Static Methods
          
-        private static byte Clip(int clr)
+        private byte clip(int clr)
         {
             return (byte)(clr < 0 ? 0 : (clr > 255 ? 255 : clr));
         }
 
-        private static RGBQUAD ConvertYCrCbToRGB(byte y, byte cr, byte cb)
+        private RGBQUAD ConvertYCrCbToRGB(byte y, byte cr, byte cb)
         {
             RGBQUAD rgbq = new RGBQUAD();
 
@@ -351,9 +335,9 @@ namespace VideoPlayer.Render
             int d = cb - 128;
             int e = cr - 128;
 
-            rgbq.R = Clip((298 * c + 409 * e + 128) >> 8);
-            rgbq.G = Clip((298 * c - 100 * d - 208 * e + 128) >> 8);
-            rgbq.B = Clip((298 * c + 516 * d + 128) >> 8);
+            rgbq.R = clip((298 * c + 409 * e + 128) >> 8);
+            rgbq.G = clip((298 * c - 100 * d - 208 * e + 128) >> 8);
+            rgbq.B = clip((298 * c + 516 * d + 128) >> 8);
 
             return rgbq;
         }
@@ -361,7 +345,7 @@ namespace VideoPlayer.Render
         /// <summary>
         /// Convert the frame. This also copies it to the Direct3D surface.
         /// </summary> 
-        unsafe private static void ApplyToD3d(IntPtr pDest, int lDestStride, IntPtr pSrc, int lSrcStride, int dwWidthInPixels, int dwHeightInPixels)
+        unsafe private void ApplyToD3d(IntPtr pDest, int lDestStride, IntPtr pSrc, int lSrcStride, int dwWidthInPixels, int dwHeightInPixels)
         {
             YUYV* pSrcPel = (YUYV*)pSrc;
             RGBQUAD* pDestPel = (RGBQUAD*)pDest;
@@ -392,7 +376,7 @@ namespace VideoPlayer.Render
         // This function assumes that pels are the same shape within both the
         // source and destination rectangles. 
         //-------------------------------------------------------------------
-        private static Rectangle LetterBoxRect(Rectangle rcSrc, Rectangle rcDst)
+        private Rectangle LetterBoxRect(Rectangle rcSrc, Rectangle rcDst)
         {
             int iDstLBWidth;
             int iDstLBHeight;
@@ -428,7 +412,7 @@ namespace VideoPlayer.Render
         // For example, a 720 x 486 rect with a PAR of 9:10, when converted to 1x1 PAR,
         // is stretched to 720 x 540.
         //-----------------------------------------------------------------------------
-        private static Rectangle CorrectAspectRatio(Rectangle src, MFRatio srcPAR)
+        private Rectangle CorrectAspectRatio(Rectangle src, MFRatio srcPAR)
         {
             // Start with a rectangle the same size as src, but offset to the origin (0,0).
             Rectangle rc = new Rectangle(0, 0, src.Right - src.Left, src.Bottom - src.Top);
@@ -453,15 +437,6 @@ namespace VideoPlayer.Render
 
             rc = new Rectangle(0, 0, rcNewWidth, rcNewHeight);
             return rc;
-        }
-
-        public static Rectangle GetClientRect(IntPtr hWnd)
-        {
-            Rectangle result = new Rectangle();
-            Win32.GetClientRect(hWnd, out result);
-            return result;
-        }
-
-        #endregion
+        } 
     }
 }
