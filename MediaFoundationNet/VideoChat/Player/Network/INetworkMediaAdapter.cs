@@ -3,7 +3,7 @@ using System;
 
 namespace VideoPlayer.Network
 {
-    public struct MediaHeader
+    public struct MediaDescriptionHeader
     {
         public int StreamId;
 
@@ -22,7 +22,7 @@ namespace VideoPlayer.Network
 
     public class MediaHeaderEventArgs : EventArgs
     {
-        public MediaHeader[] MediaHeaders;
+        public MediaDescriptionHeader[] MediaHeaders;
     }
 
     public class MediaSampleEventArgs : EventArgs
@@ -36,11 +36,18 @@ namespace VideoPlayer.Network
         public IBufferPacket Data;
     }
 
+    public class ExceptionEventArg : EventArgs
+    {
+        public Exception ExceptionData;
+    }
+
     public delegate void OnMediaHeaderReceivedEventHandler(MediaHeaderEventArgs arg);
     public delegate void OnMediaSampleReceivedEventHandler(MediaSampleEventArgs arg);
     public delegate void OnOperationRequestReceivedEventHandler(MediaOperationEventArgs arg);
 
-    public interface INetworkMediaAdapter
+    public delegate void OnExceptionEventHandler(ExceptionEventArg arg);
+
+    public interface INetworkMediaAdapter : IStopable
     {
         /// <summary>
         /// Will be invoked when sample data received from server.
@@ -59,13 +66,17 @@ namespace VideoPlayer.Network
         event OnOperationRequestReceivedEventHandler OnOperationRequestReceived;
 
         /// <summary>
+        /// Will be raised when exception is catched.
+        /// </summary>
+        event OnExceptionEventHandler OnException;
+
+        /// <summary>
         /// Set true to call SendStartRequest() automatically after the OnMediaSampleReceived event is handled,
         /// or you have to send the start request manuly.
         /// </summary>
         bool IsAutoStart { get; set; }
 
         HResult Open(string ip, int port);
-        HResult Close();
 
         void SendStartRequest();
         void SendDescribeRequest();

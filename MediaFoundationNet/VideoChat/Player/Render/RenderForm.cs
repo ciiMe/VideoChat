@@ -8,9 +8,6 @@ namespace VideoPlayer.Render
 {
     public partial class RenderForm : Form, IPlayer
     {
-        private Guid MF_MT_MAJOR_TYPE = Guid.Parse("48eba18e-f8c9-4687-bf11-0a74c9f96a8f");
-        private Guid MF_MT_SUBTYPE = Guid.Parse("f7e34c9a-42e8-4714-b74b-cb29d72c35e5");
-
         INetworkMediaAdapter _networkStreamAdapter;
 
         private int _videoStreamId;
@@ -18,8 +15,10 @@ namespace VideoPlayer.Render
         private int _videoWitdh, _videoHeight;
         private int _videoRatioN, _videoRatioD;
 
-        DrawDevice _drawDevice;
-        H264Decoder _decoder;
+        private DrawDevice _drawDevice;
+        private H264Decoder _decoder;
+
+        public bool IsStarted => _networkStreamAdapter.IsStarted;
 
         public RenderForm()
         {
@@ -29,9 +28,11 @@ namespace VideoPlayer.Render
             ThrowIfError(_drawDevice.CreateDevice(Handle));
 
             _networkStreamAdapter = new NetworkMediaAdapter();
+            _networkStreamAdapter.IsAutoStart = true;
             _networkStreamAdapter.OnMediaHeaderReceived += _networkStreamAdapter_OnMediaHeaderReceived;
             _networkStreamAdapter.OnMediaSampleReceived += _networkStreamAdapter_OnMediaSampleReceived;
             _networkStreamAdapter.OnOperationRequestReceived += _networkStreamAdapter_OnOperationRequestReceived;
+            _networkStreamAdapter.OnException += _networkStreamAdapter_OnException;
 
             _decoder = new H264Decoder();
             _decoder.OnSampleDecodeComplete += _decoder_OnSampleDecodeComplete;
@@ -77,9 +78,31 @@ namespace VideoPlayer.Render
             _drawDevice.DrawFrame(buffer);
         }
 
+        private void _networkStreamAdapter_OnException(ExceptionEventArg arg)
+        {
+            //todo: show exception in correct method...
+            Text = arg.ExceptionData.Message;
+        }
+
         public void Open(string ip, int port)
         {
             _networkStreamAdapter.Open(ip, port);
+        }
+
+        public void Start()
+        {
+            _networkStreamAdapter.Start();
+        }
+
+        public void Stop()
+        {
+            _drawDevice.DestroyDevice();
+            _decoder.Release();
+        }
+
+        private void RenderForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            Stop();
         }
 
         private void ThrowIfError(HResult hr)

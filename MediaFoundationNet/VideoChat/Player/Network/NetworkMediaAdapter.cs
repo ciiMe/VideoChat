@@ -13,6 +13,9 @@ namespace VideoPlayer.Network
         private bool _isAutoStart;
         private INetworkClient _networkSender;
 
+        //todo: add status flat to notify starting...
+        public bool IsStarted => _networkSender.IsStarted;
+
         public bool IsAutoStart
         {
             get
@@ -29,26 +32,28 @@ namespace VideoPlayer.Network
         public event OnMediaHeaderReceivedEventHandler OnMediaHeaderReceived;
 
         public event OnOperationRequestReceivedEventHandler OnOperationRequestReceived;
+        public event OnExceptionEventHandler OnException;
 
         public NetworkMediaAdapter()
         {
-            _isAutoStart = true;
+            _isAutoStart = false;
             _networkSender = new NetworkClient();
             _networkSender.OnPacketReceived += _networkSender_OnPacketReceived;
         }
 
         private void _networkSender_OnPacketReceived(VideoStream_Operation option, IBufferPacket packet)
         {
+            if (!IsStarted)
+            {
+                return;
+            }
+
             try
             {
                 switch (option)
                 {
                     case VideoStream_Operation.StspOperation_ServerDescription:
                         invokeMediaheaderEvent(packet);
-                        if (_isAutoStart)
-                        {
-                            SendStartRequest();
-                        }
                         break;
                     case VideoStream_Operation.StspOperation_ServerSample:
                         invokeMediaSampleEvent(packet);
@@ -64,17 +69,22 @@ namespace VideoPlayer.Network
             }
         }
 
+        #region Event invoking...
         private void invokeMediaheaderEvent(IBufferPacket packet)
         {
-            var arg = new MediaHeaderEventArgs
-            {
-                MediaHeaders = createMediaHeader(packet)
-            };
+            OnMediaHeaderReceived?.Invoke(
+                new MediaHeaderEventArgs
+                {
+                    MediaHeaders = createMediaHeader(packet)
+                });
 
-            OnMediaHeaderReceived?.Invoke(arg);
+            if (_isAutoStart)
+            {
+                Start();
+            }
         }
 
-        private MediaHeader[] createMediaHeader(IBufferPacket data)
+        private MediaDescriptionHeader[] createMediaHeader(IBufferPacket data)
         {
             var dataLen = data.GetLength();
             int descSize = Marshal.SizeOf(typeof(VideoStream_Description));
@@ -112,7 +122,7 @@ namespace VideoPlayer.Network
                     Throw(HResult.MF_E_UNSUPPORTED_FORMAT);
                 }
 
-                MediaHeader[] headerData = new MediaHeader[desc.StreamCount];
+                MediaDescriptionHeader[] headerData = new MediaDescriptionHeader[desc.StreamCount];
 
                 //only init for the first video stream.
                 for (int i = 0; i < streamDescs.Count; i++)
@@ -128,9 +138,9 @@ namespace VideoPlayer.Network
             }
         }
 
-        private MediaHeader createMediaHeader(VideoStream_StreamDescription pStreamDescription, IBufferPacket attributesBuffer)
+        private MediaDescriptionHeader createMediaHeader(VideoStream_StreamDescription pStreamDescription, IBufferPacket attributesBuffer)
         {
-            MediaHeader result = new MediaHeader
+            MediaDescriptionHeader result = new MediaDescriptionHeader
             {
                 StreamId = pStreamDescription.dwStreamId,
 
@@ -181,12 +191,9 @@ namespace VideoPlayer.Network
 
         private void invokeMediaSampleEvent(IBufferPacket packet)
         {
-            var arg = new MediaSampleEventArgs
-            {
-                Sample = createSample(packet)
-            };
-
-            OnMediaSampleReceived?.Invoke(arg);
+            OnMediaSampleReceived?.Invoke(
+                new MediaSampleEventArgs { Sample = createSample(packet) }
+                );
         }
 
         private IMFSample createSample(IBufferPacket packet)
@@ -264,20 +271,28 @@ namespace VideoPlayer.Network
 
         private void invokeOperationRequestEvent(VideoStream_Operation option, IBufferPacket packet)
         {
-            var arg = new MediaOperationEventArgs
-            {
-                Operation = option,
-                Data = packet
-            };
-            OnOperationRequestReceived?.Invoke(arg);
+            OnOperationRequestReceived?.Invoke(
+                new MediaOperationEventArgs { Operation = option, Data = packet }
+                );
         }
+
+        private void invokeExceptionEvent(Exception ex)
+        {
+            OnException?.Invoke(
+                new ExceptionEventArg { ExceptionData = ex }
+                );
+        }
+        #endregion
 
         public HResult Open(string ip, int port)
         {
+            if (IsStarted)
+            {
+                return HResult.MF_E_NET_BUSY;
+            }
+
             try
             {
-                ThrowIfError(CheckShutdown());
-
                 _networkSender.Connect(ip, port);
                 _networkSender.Start();
                 SendDescribeRequest();
@@ -302,16 +317,18 @@ namespace VideoPlayer.Network
             }
         }
 
-        public HResult Close()
-        {
-            HResult hr = HResult.S_OK;
-            _networkSender.Close();
-            return hr;
+        public void Start()
+        { 
+            SendStartRequest();
         }
 
-        public HResult CheckShutdown()
+        public void Stop()
         {
-            return HResult.S_OK;
+            if (!IsStarted)
+            {
+                return;
+            }
+            _networkSender.Stop();
         }
 
         public void SendStartRequest()
@@ -326,6 +343,10 @@ namespace VideoPlayer.Network
 
         public void SendRequest(VideoStream_Operation operation)
         {
+            if (!IsStarted)
+            {
+                return;
+            }
             var bytes = BytesHelper.BuildOperationBytes(operation);
             _networkSender.Send(bytes);
         }

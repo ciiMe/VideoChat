@@ -6,21 +6,22 @@ using VideoPlayer.Utils;
 
 namespace VideoPlayer.Network
 {
+    class InvalidNetworkBufferException : Exception
+    {
+        private const string ExceptionMessage_InvalidBuffer = "Invalid data from network stream.";
+
+        public InvalidNetworkBufferException() :
+            base(ExceptionMessage_InvalidBuffer)
+        {
+            HResult = (int)MediaFoundation.HResult.E_INVALIDARG;
+        }
+    }
+
     /// <summary>
     /// Handle the special data for network stream.
     /// </summary>
     public class NetworkClient : INetworkClient
     {
-        public const string ExceptionMessage_InvalidBuffer = "Invalid data from network stream.";
-
-        private class InvalidNetworkBufferException : Exception
-        {
-            public InvalidNetworkBufferException() :
-                base(ExceptionMessage_InvalidBuffer)
-            {
-                HResult = (int)MediaFoundation.HResult.E_INVALIDARG;
-            }
-        }
 
         private const int ReceiveBufferSize = 2 * 1024;
         private const int MaxPacketSize = 1024 * 1024;
@@ -37,6 +38,9 @@ namespace VideoPlayer.Network
 
         private Thread _packetEventInvoker;
         private bool _isStarted;
+
+        public bool IsStarted => _isStarted;
+
         public event MediaBufferEventHandler OnPacketReceived;
 
         public NetworkClient()
@@ -57,26 +61,13 @@ namespace VideoPlayer.Network
             Debug.WriteLine($"Connected {ip}:{port}");
         }
 
-        public void Close()
-        {
-            _isStarted = false;
-            _socket.Close();
-            Debug.WriteLine($"Disonnected from {_ip}:{_port}");
-        }
-
-        public void Disconnect()
-        {
-            _socket.Disconnect(true);
-        }
-
-        public void Send(byte[] buffer)
-        {
-            //var len = _socket.Send(buffer);
-            _socket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, handleDataSend, _socket);
-        }
-
         public void Start()
         {
+            if (_isStarted)
+            {
+                return;
+            }
+
             if (_penddingPacket != null)
             {
                 //todo: throw working exception...
@@ -91,12 +82,56 @@ namespace VideoPlayer.Network
             doReceive();
         }
 
-        private void doReceive()
+        public void Stop()
         {
-            if (!_isStarted || !_socket.Connected)
+            if (!_isStarted)
             {
                 return;
             }
+            _isStarted = false;
+
+            if (_socket != null)
+            {
+                _socket.Close();
+                _socket = null;
+            }
+            Debug.WriteLine($"Disonnected from {_ip}:{_port}");
+        }
+
+        public void Disconnect()
+        {
+            if (!_isStarted)
+            {
+                return;
+            }
+            _socket.Disconnect(true);
+        }
+
+        public void Send(byte[] buffer)
+        {
+            if (!_isStarted)
+            {
+                return;
+            }
+            //var len = _socket.Send(buffer);
+            _socket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, handleDataSend, _socket);
+        }
+
+        private void doReceive()
+        {
+            if (!_isStarted)
+            {
+                return;
+            }
+
+            if (!_socket.Connected)
+            {
+                //bad connection...
+                _isStarted = false;
+                raiseBadConnectionEvent();
+                return;
+            }
+
             lock (_bufferLock)
             {
                 _socket.BeginReceive(_currentBuffer, 0, ReceiveBufferSize, SocketFlags.None, handleDateReceived, _socket);
@@ -105,9 +140,16 @@ namespace VideoPlayer.Network
 
         private void handleDateReceived(IAsyncResult ar)
         {
+            if (!_isStarted)
+            {
+                return;
+            }
+
             var socket = ar.AsyncState as Socket;
             if (!socket.Connected)
             {
+                _isStarted = false;
+                raiseBadConnectionEvent();
                 return;
             }
 
@@ -128,6 +170,11 @@ namespace VideoPlayer.Network
                 _penddingPacket.AddBuffer(data);
             }
             doReceive();
+        }
+
+        private void raiseBadConnectionEvent()
+        {
+            //todo: raise the event...
         }
 
         private void eventInvokerHandler()

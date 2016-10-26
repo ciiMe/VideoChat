@@ -34,11 +34,11 @@ namespace VideoPlayer.Render
         public byte G;
         public byte R;
         public byte A;
-    } 
+    }
 
     public class DrawDevice : COMBase
     {
-        private const int NUM_BACK_BUFFERS = 2; 
+        private const int NUM_BACK_BUFFERS = 2;
 
         private IntPtr _videoHwnd;
         private Device _device;
@@ -321,7 +321,7 @@ namespace VideoPlayer.Render
         }
 
         #endregion
-         
+
         private byte clip(int clr)
         {
             return (byte)(clr < 0 ? 0 : (clr > 255 ? 255 : clr));
@@ -437,6 +437,6 @@ namespace VideoPlayer.Render
 
             rc = new Rectangle(0, 0, rcNewWidth, rcNewHeight);
             return rc;
-        } 
+        }
     }
 }

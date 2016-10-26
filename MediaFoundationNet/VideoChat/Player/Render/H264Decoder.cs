@@ -50,7 +50,7 @@ namespace VideoPlayer.Render
     public class H264Decoder
     {
         // This is H264 Decoder MFT.
-        private IMFTransform pDecoderTransform = null;
+        private IMFTransform _SampleTransformer = null;
         //decoded sample buffer cache objects.
         private MFTOutputDataBuffer[] _mftOutBufferContainer;
         private IMFSample _mftOutSample;
@@ -59,7 +59,7 @@ namespace VideoPlayer.Render
         private int _videoStreamId;
         private IMFMediaType _streamMediaType;
 
-        private int _videoWitdh, _videoHeight; 
+        private int _videoWitdh, _videoHeight;
         private int _videoRatioN, _videoRatioD;
 
         public event OnSampleDecodeCompleteEventHandler OnSampleDecodeComplete;
@@ -72,7 +72,7 @@ namespace VideoPlayer.Render
                 //todo: warn no MFT is avilalbe
             }
 
-            pDecoderTransform = obj as IMFTransform; 
+            _SampleTransformer = obj as IMFTransform;
         }
 
         public void initialize(int streamId, IMFMediaType mediaType)
@@ -80,7 +80,7 @@ namespace VideoPlayer.Render
             //process input.
             ThrowIfError(MFExtern.MFGetAttributeSize(mediaType, MFAttributesClsid.MF_MT_FRAME_SIZE, out _videoWitdh, out _videoHeight));
             ThrowIfError(MFExtern.MFGetAttributeRatio(mediaType, MFAttributesClsid.MF_MT_PIXEL_ASPECT_RATIO, out _videoRatioN, out _videoRatioD));
-            ThrowIfError(pDecoderTransform.SetInputType(streamId, mediaType, MFTSetTypeFlags.None));
+            ThrowIfError(_SampleTransformer.SetInputType(streamId, mediaType, MFTSetTypeFlags.None));
 
             //process output
             IMFMediaType h264OutputType;
@@ -95,19 +95,19 @@ namespace VideoPlayer.Render
             ThrowIfError(MFExtern.MFSetAttributeRatio(attr, MFGuids.MF_MT_PIXEL_ASPECT_RATIO, _videoRatioN, _videoRatioD));
             ThrowIfError(attr.SetUINT32(MFGuids.MF_MT_INTERLACE_MODE, 2));
 
-            ThrowIfError(pDecoderTransform.SetOutputType(streamId, h264OutputType, MFTSetTypeFlags.None));
+            ThrowIfError(_SampleTransformer.SetOutputType(streamId, h264OutputType, MFTSetTypeFlags.None));
 
             MFTInputStatusFlags mftStatus;
-            ThrowIfError(pDecoderTransform.GetInputStatus(streamId, out mftStatus));
+            ThrowIfError(_SampleTransformer.GetInputStatus(streamId, out mftStatus));
 
             if (MFTInputStatusFlags.AcceptData != mftStatus)
             {
                 throw new Exception("H.264 decoder MFT is not accepting data.\n");
             }
 
-            ThrowIfError(pDecoderTransform.ProcessMessage(MFTMessageType.CommandFlush, IntPtr.Zero));
-            ThrowIfError(pDecoderTransform.ProcessMessage(MFTMessageType.NotifyBeginStreaming, IntPtr.Zero));
-            ThrowIfError(pDecoderTransform.ProcessMessage(MFTMessageType.NotifyStartOfStream, IntPtr.Zero));
+            ThrowIfError(_SampleTransformer.ProcessMessage(MFTMessageType.CommandFlush, IntPtr.Zero));
+            ThrowIfError(_SampleTransformer.ProcessMessage(MFTMessageType.NotifyBeginStreaming, IntPtr.Zero));
+            ThrowIfError(_SampleTransformer.ProcessMessage(MFTMessageType.NotifyStartOfStream, IntPtr.Zero));
 
             ThrowIfError(MFExtern.MFCreateSample(out _mftOutSample));
 
@@ -120,6 +120,12 @@ namespace VideoPlayer.Render
 
             _videoStreamId = streamId;
             _streamMediaType = mediaType;
+        }
+
+        public void Release()
+        {
+            //todo: how to release? set null???
+            _SampleTransformer = null;
         }
 
         //todo: put the process work to background thread to speed up.
@@ -135,9 +141,9 @@ namespace VideoPlayer.Render
                 return hr;
             }
 
-            pDecoderTransform.ProcessInput(0, videoSample, 0);
-            pDecoderTransform.GetOutputStatus(out mftOutFlags);
-            pDecoderTransform.GetOutputStreamInfo(0, out StreamInfo);
+            _SampleTransformer.ProcessInput(0, videoSample, 0);
+            _SampleTransformer.GetOutputStatus(out mftOutFlags);
+            _SampleTransformer.GetOutputStreamInfo(0, out StreamInfo);
 
             while (true)
             {
@@ -148,7 +154,7 @@ namespace VideoPlayer.Render
                 _mftOutSample.AddBuffer(resultBuffer);
 
                 ProcessOutputStatus outputStatus;
-                var mftProcessOutput = pDecoderTransform.ProcessOutput(0, 1, _mftOutBufferContainer, out outputStatus);
+                var mftProcessOutput = _SampleTransformer.ProcessOutput(0, 1, _mftOutBufferContainer, out outputStatus);
                 if (mftProcessOutput == HResult.MF_E_TRANSFORM_NEED_MORE_INPUT)
                 {
                     //continue provice input data.
@@ -197,7 +203,7 @@ namespace VideoPlayer.Render
             {
                 //todo: throw event to notify the client.
             }
-        } 
+        }
 
         private void ThrowIfError(HResult hr)
         {

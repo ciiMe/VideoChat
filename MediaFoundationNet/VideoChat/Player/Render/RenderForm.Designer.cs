@@ -37,6 +37,7 @@
             this.ClientSize = new System.Drawing.Size(488, 343);
             this.Name = "RenderForm";
             this.Text = "RenderForm";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.RenderForm_FormClosed);
             this.ResumeLayout(false);
 
         }
