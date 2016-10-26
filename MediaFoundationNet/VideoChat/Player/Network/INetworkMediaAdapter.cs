@@ -32,7 +32,7 @@ namespace VideoPlayer.Network
 
     public class MediaOperationEventArgs : EventArgs
     {
-        public StspOperation Operation;
+        public VideoStream_Operation Operation;
         public IBufferPacket Data;
     }
 
@@ -69,6 +69,6 @@ namespace VideoPlayer.Network
 
         void SendStartRequest();
         void SendDescribeRequest();
-        void SendRequest(StspOperation eOperation);
+        void SendRequest(VideoStream_Operation eOperation);
     }
 }

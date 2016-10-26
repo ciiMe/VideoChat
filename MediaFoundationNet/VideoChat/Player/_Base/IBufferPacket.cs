@@ -2,7 +2,7 @@
 
 namespace VideoPlayer
 {
-    public delegate void MediaBufferEventHandler(StspOperation option, IBufferPacket packet);
+    public delegate void MediaBufferEventHandler(VideoStream_Operation option, IBufferPacket packet);
     public delegate HResult BufferEventHandler(byte[] buffer);
     /// <summary>
     /// A packet to cache received buffer list.
@@ -43,7 +43,7 @@ namespace VideoPlayer
         /// <summary>
         /// Get the Option type of the first option request.
         /// </summary>
-        StspOperation GetFirstOperationDataType();
+        VideoStream_Operation GetFirstOperationDataType();
 
         /// <summary>
         /// Return true when the packet contains at least one entire option data.

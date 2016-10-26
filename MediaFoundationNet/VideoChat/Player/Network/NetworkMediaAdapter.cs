@@ -37,20 +37,20 @@ namespace VideoPlayer.Network
             _networkSender.OnPacketReceived += _networkSender_OnPacketReceived;
         }
 
-        private void _networkSender_OnPacketReceived(StspOperation option, IBufferPacket packet)
+        private void _networkSender_OnPacketReceived(VideoStream_Operation option, IBufferPacket packet)
         {
             try
             {
                 switch (option)
                 {
-                    case StspOperation.StspOperation_ServerDescription:
+                    case VideoStream_Operation.StspOperation_ServerDescription:
                         invokeMediaheaderEvent(packet);
                         if (_isAutoStart)
                         {
                             SendStartRequest();
                         }
                         break;
-                    case StspOperation.StspOperation_ServerSample:
+                    case VideoStream_Operation.StspOperation_ServerSample:
                         invokeMediaSampleEvent(packet);
                         break;
                     default:
@@ -77,11 +77,11 @@ namespace VideoPlayer.Network
         private MediaHeader[] createMediaHeader(IBufferPacket data)
         {
             var dataLen = data.GetLength();
-            int descSize = Marshal.SizeOf(typeof(StspDescription));
-            int streamDescSize = Marshal.SizeOf(typeof(StspStreamDescription));
+            int descSize = Marshal.SizeOf(typeof(VideoStream_Description));
+            int streamDescSize = Marshal.SizeOf(typeof(VideoStream_StreamDescription));
 
             // Copy description  
-            var desc = BytesHelper.TakeObject<StspDescription>(data);
+            var desc = BytesHelper.TakeObject<VideoStream_Description>(data);
             // Size of the packet should match size described in the packet (size of Description structure + size of attribute blob)
             var cbConstantSize = Convert.ToInt32(descSize + (desc.StreamCount - 1) * streamDescSize);
             // Check if the input parameters are valid. We only support 2 streams.
@@ -92,11 +92,11 @@ namespace VideoPlayer.Network
 
             try
             {
-                List<StspStreamDescription> streamDescs = new List<StspStreamDescription>(desc.StreamDescriptions);
+                List<VideoStream_StreamDescription> streamDescs = new List<VideoStream_StreamDescription>(desc.StreamDescriptions);
 
                 for (int i = 1; i < desc.StreamCount; i++)
                 {
-                    var sd = BytesHelper.TakeObject<StspStreamDescription>(data);
+                    var sd = BytesHelper.TakeObject<VideoStream_StreamDescription>(data);
                     streamDescs.Add(sd);
                 }
 
@@ -128,7 +128,7 @@ namespace VideoPlayer.Network
             }
         }
 
-        private MediaHeader createMediaHeader(StspStreamDescription pStreamDescription, IBufferPacket attributesBuffer)
+        private MediaHeader createMediaHeader(VideoStream_StreamDescription pStreamDescription, IBufferPacket attributesBuffer)
         {
             MediaHeader result = new MediaHeader
             {
@@ -192,10 +192,10 @@ namespace VideoPlayer.Network
         private IMFSample createSample(IBufferPacket packet)
         {
             // Only process samples when we are in started state
-            StspSampleHeader sampleHead;
+            VideoStream_SampleHeader sampleHead;
 
             // Copy the header object
-            sampleHead = BytesHelper.TakeObject<StspSampleHeader>(packet);
+            sampleHead = BytesHelper.TakeObject<VideoStream_SampleHeader>(packet);
             if (packet.GetLength() < 0)
             {
                 ThrowIfError(HResult.E_INVALIDARG);
@@ -239,13 +239,21 @@ namespace VideoPlayer.Network
             return hr;
         }
 
-        private void SetSampleAttributes(StspSampleHeader sampleHeader, IMFSample sample)
+        private void SetSampleAttributes(VideoStream_SampleHeader sampleHeader, IMFSample sample)
         {
             ThrowIfError(sample.SetSampleTime(sampleHeader.ullTimestamp));
             ThrowIfError(sample.SetSampleDuration(sampleHeader.ullDuration));
+
+            SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFGuids.MFSampleExtension_BottomFieldFirst, SampleFlag.StspSampleFlag_BottomFieldFirst);
+            SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFGuids.MFSampleExtension_CleanPoint, SampleFlag.StspSampleFlag_CleanPoint);
+            SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFGuids.MFSampleExtension_DerivedFromTopField, SampleFlag.StspSampleFlag_DerivedFromTopField);
+            SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFGuids.MFSampleExtension_Discontinuity, SampleFlag.StspSampleFlag_Discontinuity);
+            SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFGuids.MFSampleExtension_Interlaced, SampleFlag.StspSampleFlag_Interlaced);
+            SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFGuids.MFSampleExtension_RepeatFirstField, SampleFlag.StspSampleFlag_RepeatFirstField);
+            SET_SAMPLE_ATTRIBUTE(sampleHeader, sample, MFGuids.MFSampleExtension_SingleField, SampleFlag.StspSampleFlag_SingleField);
         }
 
-        void SET_SAMPLE_ATTRIBUTE(StspSampleHeader sampleHeader, IMFSample pSample, Guid flag, StspSampleFlags flagValue)
+        void SET_SAMPLE_ATTRIBUTE(VideoStream_SampleHeader sampleHeader, IMFSample pSample, Guid flag, SampleFlag flagValue)
         {
             var value = (int)flagValue;
             if ((value & sampleHeader.dwFlagMasks) == value)
@@ -254,7 +262,7 @@ namespace VideoPlayer.Network
             }
         }
 
-        private void invokeOperationRequestEvent(StspOperation option, IBufferPacket packet)
+        private void invokeOperationRequestEvent(VideoStream_Operation option, IBufferPacket packet)
         {
             var arg = new MediaOperationEventArgs
             {
@@ -308,15 +316,15 @@ namespace VideoPlayer.Network
 
         public void SendStartRequest()
         {
-            SendRequest(StspOperation.StspOperation_ClientRequestStart);
+            SendRequest(VideoStream_Operation.StspOperation_ClientRequestStart);
         }
 
         public void SendDescribeRequest()
         {
-            SendRequest(StspOperation.StspOperation_ClientRequestDescription);
+            SendRequest(VideoStream_Operation.StspOperation_ClientRequestDescription);
         }
 
-        public void SendRequest(StspOperation operation)
+        public void SendRequest(VideoStream_Operation operation)
         {
             var bytes = BytesHelper.BuildOperationBytes(operation);
             _networkSender.Send(bytes);

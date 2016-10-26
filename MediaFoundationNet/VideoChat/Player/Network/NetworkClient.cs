@@ -166,7 +166,7 @@ namespace VideoPlayer.Network
                 p = _penddingPacket.TakeFirstOption();
             }
 
-            var header = BytesHelper.TakeObject<StspOperationHeader>(p);
+            var header = BytesHelper.TakeObject<VideoStream_OperationHeader>(p);
             if (header.cbDataSize != p.GetLength())
             {
                 throw new InvalidNetworkBufferException();

@@ -1,11 +1,9 @@
-﻿using MediaFoundation;
-using MediaFoundation.Misc;
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 
 namespace VideoPlayer
 {
-    public struct StspSampleHeader
+    public struct VideoStream_SampleHeader
     {
         public int dwStreamId;
         public long ullTimestamp;
@@ -14,7 +12,7 @@ namespace VideoPlayer
         public int dwFlagMasks;
     };
 
-    public enum StspSampleFlags
+    public enum SampleFlag
     {
         StspSampleFlag_BottomFieldFirst,
         StspSampleFlag_CleanPoint,
@@ -25,13 +23,13 @@ namespace VideoPlayer
         StspSampleFlag_SingleField,
     };
 
-    public struct StspOperationHeader
+    public struct VideoStream_OperationHeader
     {
         public int cbDataSize;
-        public StspOperation eOperation;
+        public VideoStream_Operation eOperation;
     };
 
-    public enum StspOperation
+    public enum VideoStream_Operation
     {
         StspOperation_Unknown,
         StspOperation_ClientRequestDescription,
@@ -43,7 +41,7 @@ namespace VideoPlayer
         StspOperation_Last,
     };
     
-    public struct StspStreamDescription
+    public struct VideoStream_StreamDescription
     {
         public Guid guiMajorType;
         public Guid guiSubType;
@@ -51,44 +49,10 @@ namespace VideoPlayer
         public int cbAttributesSize;
     };
 
-    public struct StspDescription
+    public struct VideoStream_Description
     {
         public uint StreamCount;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
-        public StspStreamDescription[] StreamDescriptions;
+        public VideoStream_StreamDescription[] StreamDescriptions;
     };
-
-    // Possible states of the stsp source object
-    public enum SourceState
-    {
-        // Invalid state, source cannot be used 
-        SourceState_Invalid,
-        // Opening the connection
-        SourceState_Opening,
-        // Streaming started
-        SourceState_Starting,
-        // Streaming started
-        SourceState_Started,
-        // Streanung stopped
-        SourceState_Stopped,
-        // Source is shut down
-        SourceState_Shutdown,
-    };
-
-    public enum SourceOperationType
-    {
-        // Start the source
-        Operation_Start,
-        // Stop the source
-        Operation_Stop,
-        // Set rate
-        Operation_SetRate,
-    };
-
-    public struct CSourceOperation
-    {
-        public SourceOperationType Type;
-        public IMFPresentationDescriptor PresentationDescriptor;
-        public ConstPropVariant Data;
-    }
 }

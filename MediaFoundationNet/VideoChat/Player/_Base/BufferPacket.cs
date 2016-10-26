@@ -117,9 +117,9 @@ namespace VideoPlayer
             return BytesHelper.ReadInt32(this);
         }
 
-        public StspOperation GetFirstOperationDataType()
+        public VideoStream_Operation GetFirstOperationDataType()
         {
-            return BytesHelper.ReadOption(this);
+            return BytesHelper.ReadOperation(this);
         }
 
         public bool HasOptionData()

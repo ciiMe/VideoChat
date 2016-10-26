@@ -7,9 +7,9 @@ namespace VideoPlayer.Utils
 {
     public static class BytesHelper
     {
-        public static byte[] BuildOperationBytes(StspOperation operation)
+        public static byte[] BuildOperationBytes(VideoStream_Operation operation)
         {
-            var opHeader = new StspOperationHeader { cbDataSize = 0, eOperation = operation };
+            var opHeader = new VideoStream_OperationHeader { cbDataSize = 0, eOperation = operation };
 
             var bytes = new byte[Marshal.SizeOf(opHeader)];
 
@@ -113,13 +113,13 @@ namespace VideoPlayer.Utils
             return result;
         }
 
-        public static StspOperation ReadOption(IBufferPacket packet)
+        public static VideoStream_Operation ReadOperation(IBufferPacket packet)
         {
             var dataSize = 8;
             var data = packet.GetBuffer(dataSize);
             if (data == null || data.Length < dataSize)
             {
-                return StspOperation.StspOperation_Unknown;
+                return VideoStream_Operation.StspOperation_Unknown;
             }
 
             IntPtr p = Marshal.AllocHGlobal(dataSize);
@@ -127,12 +127,12 @@ namespace VideoPlayer.Utils
             var result = Marshal.ReadInt32(p, 4);
             Marshal.FreeHGlobal(p);
 
-            if (result < (int)StspOperation.StspOperation_Unknown || result > (int)StspOperation.StspOperation_Last)
+            if (result < (int)VideoStream_Operation.StspOperation_Unknown || result > (int)VideoStream_Operation.StspOperation_Last)
             {
-                return StspOperation.StspOperation_Unknown;
+                return VideoStream_Operation.StspOperation_Unknown;
             }
 
-            return (StspOperation)result;
+            return (VideoStream_Operation)result;
         }
 
         public static HResult ConverToMediaBuffer(IBufferPacket packet, out IMFMediaBuffer mediaBuffer)
