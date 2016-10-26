@@ -1,6 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VideoPlayer;
-using VideoPlayer.Stream;
+using VideoPlayer.Utils;
 
 namespace NetworkBufferTest
 {
@@ -13,7 +13,7 @@ namespace NetworkBufferTest
         public void TestBytesConvert_StspOperationHeader()
         {
             //result should be:[0,0,0,0,1,0,0,0]
-            var result = StreamConvertor.BuildOperationBytes(StspOperation.StspOperation_ClientRequestDescription);
+            var result = BytesHelper.BuildOperationBytes(StspOperation.StspOperation_ClientRequestDescription);
             Assert.IsTrue(BufferHelper.isBytesSame(result, Bytes_ClientRequestDescription));
         }
     }

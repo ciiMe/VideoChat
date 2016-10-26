@@ -103,8 +103,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IPlayer.cs" />
-    <Compile Include="MediaBase.cs" />
+    <Compile Include="_Base\IPlayer.cs" />
+    <Compile Include="_Base\MediaBase.cs" />
     <Compile Include="Network\INetworkClient.cs" />
     <Compile Include="Network\NetworkClient.cs" />
     <Compile Include="Program.cs" />
@@ -118,13 +118,14 @@
       <DependentUpon>RenderForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Render\VideoBufferLock.cs" />
-    <Compile Include="Stream\BufferPacket.cs" />
-    <Compile Include="Stream\IBufferPacket.cs" />
-    <Compile Include="Stream\INetworkMediaAdapter.cs" />
-    <Compile Include="Stream\NetworkMediaAdapter.cs" />
-    <Compile Include="Stream\StreamConvertor.cs" />
+    <Compile Include="_Base\BufferPacket.cs" />
+    <Compile Include="_Base\IBufferPacket.cs" />
+    <Compile Include="Network\INetworkMediaAdapter.cs" />
+    <Compile Include="Network\NetworkMediaAdapter.cs" />
+    <Compile Include="Utils\BytesHelper.cs" />
     <Compile Include="WindowsExtern\Kernal32.cs" />
     <Compile Include="WindowsExtern\Win32.cs" />
+    <Compile Include="_Base\MFGuids.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

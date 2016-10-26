@@ -2,7 +2,7 @@
 using MediaFoundation.Misc;
 using System;
 using System.Windows.Forms;
-using VideoPlayer.Stream;
+using VideoPlayer.Network;
 
 namespace VideoPlayer.Render
 {

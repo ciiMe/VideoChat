@@ -1,8 +1,5 @@
-﻿using System;
-using System.Text;
-using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VideoPlayer.Stream;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using VideoPlayer;
 
 namespace NetworkBufferTest
 {

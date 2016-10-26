@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
-using VideoPlayer.Stream;
+using VideoPlayer.Utils;
 
 namespace VideoPlayer.Network
 {
@@ -166,7 +166,7 @@ namespace VideoPlayer.Network
                 p = _penddingPacket.TakeFirstOption();
             }
 
-            var header = StreamConvertor.TakeObject<StspOperationHeader>(p);
+            var header = BytesHelper.TakeObject<StspOperationHeader>(p);
             if (header.cbDataSize != p.GetLength())
             {
                 throw new InvalidNetworkBufferException();

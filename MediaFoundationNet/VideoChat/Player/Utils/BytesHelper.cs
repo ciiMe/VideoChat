@@ -3,9 +3,9 @@ using MediaFoundation.Misc;
 using System;
 using System.Runtime.InteropServices;
 
-namespace VideoPlayer.Stream
+namespace VideoPlayer.Utils
 {
-    public static class StreamConvertor
+    public static class BytesHelper
     {
         public static byte[] BuildOperationBytes(StspOperation operation)
         {

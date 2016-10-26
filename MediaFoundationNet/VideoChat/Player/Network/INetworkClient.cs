@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using VideoPlayer.Stream;
-
-namespace VideoPlayer.Network
+﻿namespace VideoPlayer.Network
 {
     public interface INetworkClient
     {

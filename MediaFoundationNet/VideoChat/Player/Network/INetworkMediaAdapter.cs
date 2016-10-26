@@ -1,7 +1,7 @@
 ﻿using MediaFoundation;
 using System;
 
-namespace VideoPlayer.Stream
+namespace VideoPlayer.Network
 {
     public struct MediaHeader
     {

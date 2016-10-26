@@ -4,15 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using VideoPlayer.Network;
+using VideoPlayer.Utils;
 
-namespace VideoPlayer.Stream
+namespace VideoPlayer.Network
 {
     public class NetworkMediaAdapter : INetworkMediaAdapter
     {
-        private Guid MF_MT_MAJOR_TYPE = Guid.Parse("48eba18e-f8c9-4687-bf11-0a74c9f96a8f");
-        private Guid MF_MT_SUBTYPE = Guid.Parse("f7e34c9a-42e8-4714-b74b-cb29d72c35e5");
-
         private bool _isAutoStart;
         private INetworkClient _networkSender;
 
@@ -84,7 +81,7 @@ namespace VideoPlayer.Stream
             int streamDescSize = Marshal.SizeOf(typeof(StspStreamDescription));
 
             // Copy description  
-            var desc = StreamConvertor.TakeObject<StspDescription>(data);
+            var desc = BytesHelper.TakeObject<StspDescription>(data);
             // Size of the packet should match size described in the packet (size of Description structure + size of attribute blob)
             var cbConstantSize = Convert.ToInt32(descSize + (desc.StreamCount - 1) * streamDescSize);
             // Check if the input parameters are valid. We only support 2 streams.
@@ -99,7 +96,7 @@ namespace VideoPlayer.Stream
 
                 for (int i = 1; i < desc.StreamCount; i++)
                 {
-                    var sd = StreamConvertor.TakeObject<StspStreamDescription>(data);
+                    var sd = BytesHelper.TakeObject<StspStreamDescription>(data);
                     streamDescs.Add(sd);
                 }
 
@@ -169,8 +166,8 @@ namespace VideoPlayer.Stream
             {
                 Marshal.FreeHGlobal(pAttributes);
             }
-            ThrowIfError(mediaType.SetGUID(MF_MT_MAJOR_TYPE, pStreamDescription.guiMajorType));
-            ThrowIfError(mediaType.SetGUID(MF_MT_SUBTYPE, pStreamDescription.guiSubType));
+            ThrowIfError(mediaType.SetGUID(MFGuids.MF_MT_MAJOR_TYPE, pStreamDescription.guiMajorType));
+            ThrowIfError(mediaType.SetGUID(MFGuids.MF_MT_SUBTYPE, pStreamDescription.guiSubType));
 
             if (result.IsVideo)
             {
@@ -198,7 +195,7 @@ namespace VideoPlayer.Stream
             StspSampleHeader sampleHead;
 
             // Copy the header object
-            sampleHead = StreamConvertor.TakeObject<StspSampleHeader>(packet);
+            sampleHead = BytesHelper.TakeObject<StspSampleHeader>(packet);
             if (packet.GetLength() < 0)
             {
                 ThrowIfError(HResult.E_INVALIDARG);
@@ -225,7 +222,7 @@ namespace VideoPlayer.Stream
 
             //Get the media buffer
             IMFMediaBuffer mediaBuffer;
-            hr = StreamConvertor.ConverToMediaBuffer(packet, out mediaBuffer);
+            hr = BytesHelper.ConverToMediaBuffer(packet, out mediaBuffer);
             if (MFError.Failed(hr))
             {
                 return hr;
@@ -321,7 +318,7 @@ namespace VideoPlayer.Stream
 
         public void SendRequest(StspOperation operation)
         {
-            var bytes = StreamConvertor.BuildOperationBytes(operation);
+            var bytes = BytesHelper.BuildOperationBytes(operation);
             _networkSender.Send(bytes);
         }
 

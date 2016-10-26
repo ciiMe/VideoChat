@@ -1,6 +1,6 @@
 ﻿using MediaFoundation;
 
-namespace VideoPlayer.Stream
+namespace VideoPlayer
 {
     public delegate void MediaBufferEventHandler(StspOperation option, IBufferPacket packet);
     public delegate HResult BufferEventHandler(byte[] buffer);

@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using VideoPlayer.Utils;
 
-namespace VideoPlayer.Stream
+namespace VideoPlayer
 {
     public class BufferPacket : IBufferPacket
     {
@@ -113,12 +114,12 @@ namespace VideoPlayer.Stream
     {
         public int GetFirstOptionDataLength()
         {
-            return StreamConvertor.ReadInt32(this);
+            return BytesHelper.ReadInt32(this);
         }
 
         public StspOperation GetFirstOperationDataType()
         {
-            return StreamConvertor.ReadOption(this);
+            return BytesHelper.ReadOption(this);
         }
 
         public bool HasOptionData()
