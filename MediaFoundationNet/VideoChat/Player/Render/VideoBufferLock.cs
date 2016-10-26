@@ -1,16 +1,9 @@
 ﻿using MediaFoundation;
 using MediaFoundation.Misc;
 using System;
-using System.Diagnostics;
 
 namespace VideoPlayer.Render
 {
-    //-------------------------------------------------------------------
-    //  VideoBufferLock class
-    //
-    //  Locks a video buffer that might or might not support IMF2DBuffer.
-    //
-    //-------------------------------------------------------------------
     class VideoBufferLock : COMBase, IDisposable
     {
         private IMFMediaBuffer m_pBuffer;
@@ -24,18 +17,9 @@ namespace VideoPlayer.Render
             m_p2DBuffer = null;
             m_bLocked = false;
             m_pBuffer = pBuffer;
-
-            // Query for the 2-D buffer interface. OK if this fails.
+            
             m_p2DBuffer = pBuffer as IMF2DBuffer;
         }
-
-#if DEBUG
-        ~VideoBufferLock()
-        {
-            // Was Dispose called?
-            Debug.Assert(m_pBuffer == null && m_p2DBuffer == null);
-        }
-#endif
 
         //-------------------------------------------------------------------
         // LockBuffer
@@ -69,7 +53,6 @@ namespace VideoPlayer.Render
                 int pcbMaxLength;
                 int pcbCurrentLength;
 
-
                 hr = m_pBuffer.Lock(out pData, out pcbMaxLength, out pcbCurrentLength);
                 if (Succeeded(hr))
                 {
@@ -82,8 +65,7 @@ namespace VideoPlayer.Render
                     }
                     else
                     {
-                        // Top-down orientation. Return a pointer to the start of the
-                        // buffer.
+                        // Top-down orientation. Return a pointer to the start of the buffer.
                         ppbScanLine0 = pData;
                     }
                 }
@@ -99,7 +81,6 @@ namespace VideoPlayer.Render
         //
         // Unlocks the buffer. Called automatically by the destructor.
         //-------------------------------------------------------------------
-
         public void UnlockBuffer()
         {
             if (m_bLocked)

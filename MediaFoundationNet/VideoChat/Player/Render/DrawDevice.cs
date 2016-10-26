@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Drawing;
-using System.Diagnostics;
 
 using MediaFoundation;
 using MediaFoundation.Misc;
@@ -54,30 +53,7 @@ namespace VideoPlayer.Render
             public byte rgbRed;
         }
 
-        private struct VideoFormatGUID
-        {
-            public Guid SubType;
-            public VideoConversion VideoConvertFunction;
-
-            public VideoFormatGUID(Guid FormatGuid, VideoConversion cvt)
-            {
-                SubType = FormatGuid;
-                VideoConvertFunction = cvt;
-            }
-        }
-
-        // Function to convert the video to RGB32
-        private delegate void VideoConversion(
-            IntPtr pDest,
-            int lDestStride,
-            IntPtr pSrc,
-            int lSrcStride,
-            int dwWidthInPixels,
-            int dwHeightInPixels);
-
         #endregion
-
-        #region Private Members
 
         private IntPtr m_hwnd;
         private Device m_pDevice;
@@ -85,23 +61,14 @@ namespace VideoPlayer.Render
 
         private PresentParameters[] m_d3dpp;
 
-        // Format information
-        private Format m_format;
+        // Format information 
         private int m_width;
         private int m_height;
         private int m_lDefaultStride;
         private MFRatio m_PixelAR;
-        private Rectangle m_rcDest;       // Destination rectangle
+        // Destination rectangle
+        private Rectangle m_rcDest;
 
-        private VideoFormatGUID[] VideoFormatDefs;
-
-        private VideoConversion m_convertFn;
-
-        #endregion
-
-        //-------------------------------------------------------------------
-        // Constructor
-        //-------------------------------------------------------------------
         public DrawDevice()
         {
             m_hwnd = IntPtr.Zero;
@@ -110,35 +77,12 @@ namespace VideoPlayer.Render
 
             m_d3dpp = null;
 
-            m_format = Format.X8R8G8B8;
             m_width = 0;
             m_height = 0;
             m_lDefaultStride = 0;
             m_PixelAR.Denominator = m_PixelAR.Numerator = 1;
             m_rcDest = Rectangle.Empty;
-
-            VideoFormatDefs = new VideoFormatGUID[] {
-                new VideoFormatGUID(MFMediaType.RGB32, TransformImage_RGB32),
-                new VideoFormatGUID(MFMediaType.RGB24, TransformImage_RGB24),
-                new VideoFormatGUID(MFMediaType.YUY2, TransformImage_YUY2),
-                new VideoFormatGUID(MFMediaType.NV12, TransformImage_NV12)
-            };
-
-            m_convertFn = null;
         }
-
-        //-------------------------------------------------------------------
-        // Destructor
-        //-------------------------------------------------------------------
-#if DEBUG
-        ~DrawDevice()
-        {
-            Debug.Assert(m_pSwapChain == null || m_pDevice == null);
-            DestroyDevice();
-        }
-#endif 
-
-        #region Private Methods
 
         private HResult TestCooperativeLevel()
         {
@@ -157,34 +101,6 @@ namespace VideoPlayer.Render
             return hr;
         }
 
-        //-------------------------------------------------------------------
-        // SetConversionFunction
-        //
-        // Set the conversion function for the specified video format.
-        //-------------------------------------------------------------------
-        private HResult SetConversionFunction(Guid subtype)
-        {
-            HResult hr = HResult.MF_E_INVALIDMEDIATYPE;
-            m_convertFn = null;
-
-            for (int i = 0; i < VideoFormatDefs.Length; i++)
-            {
-                if (VideoFormatDefs[i].SubType == subtype)
-                {
-                    m_convertFn = VideoFormatDefs[i].VideoConvertFunction;
-                    hr = HResult.S_OK;
-                    break;
-                }
-            }
-
-            return hr;
-        }
-
-        //-------------------------------------------------------------------
-        // CreateSwapChains
-        //
-        // Create Direct3D swap chains.
-        //-------------------------------------------------------------------
         private HResult CreateSwapChains()
         {
             HResult hr = HResult.S_OK;
@@ -231,15 +147,8 @@ namespace VideoPlayer.Render
             m_rcDest = LetterBoxRect(rcSrc, rectanClient);
         }
 
-        #endregion
-
         #region Public Methods
 
-        //-------------------------------------------------------------------
-        // CreateDevice
-        //
-        // Create the Direct3D device.
-        //-------------------------------------------------------------------
         public HResult CreateDevice(IntPtr hwnd)
         {
             if (m_pDevice != null)
@@ -270,11 +179,6 @@ namespace VideoPlayer.Render
             return HResult.S_OK;
         }
 
-        //-------------------------------------------------------------------
-        // ResetDevice
-        //
-        // Resets the Direct3D device.
-        //-------------------------------------------------------------------
         public HResult ResetDevice()
         {
             HResult hr = HResult.S_OK;
@@ -315,7 +219,7 @@ namespace VideoPlayer.Render
                 }
             }
 
-            if ((m_pSwapChain == null) && (m_format != Format.Unknown))
+            if ((m_pSwapChain == null))
             {
                 hr = CreateSwapChains();
                 if (Failed(hr)) { return hr; }
@@ -326,11 +230,6 @@ namespace VideoPlayer.Render
             return hr;
         }
 
-        //-------------------------------------------------------------------
-        // DestroyDevice
-        //
-        // Release all Direct3D resources.
-        //-------------------------------------------------------------------
         public void DestroyDevice()
         {
             if (m_pSwapChain != null)
@@ -345,123 +244,29 @@ namespace VideoPlayer.Render
             }
         }
 
-        //-------------------------------------------------------------------
-        // SetVideoType
-        //
-        // Set the video format.
-        //-------------------------------------------------------------------
         public HResult InitializeSetVideoSize(int width, int height, MFRatio ratio)
         {
             HResult hr = HResult.S_OK;
 
-            // Choose a conversion function.
-            // (This also validates the format type.)
-            hr = SetConversionFunction(MFMediaType.YUY2);
-            if (Failed(hr)) { goto done; }
-            
-            // Get some video attributes.
             m_width = width;
             m_height = height;
             m_PixelAR = ratio;
 
             FourCC f = new FourCC(MFMediaType.YUY2);
-            m_format = (Format)f.ToInt32();
             // Get the image stride. 
             hr = MFExtern.MFGetStrideForBitmapInfoHeader(f.ToInt32(), width, out m_lDefaultStride);
 
-            // Create Direct3D swap chains.
             hr = CreateSwapChains();
             if (Failed(hr)) { goto done; }
-
-            // Update the destination rectangle for the correct
-            // aspect ratio.
-            UpdateDestinationRect();
-
-            done:
-            if (Failed(hr))
-            {
-                m_format = Format.Unknown;
-                m_convertFn = null;
-            }
-
-            return hr;
-        }
-
-        public HResult SetVideoType(IMFMediaType pType)
-        {
-            HResult hr = HResult.S_OK;
-            Guid subtype;
-            MFRatio PAR = new MFRatio();
-
-            // Find the video subtype.
-            hr = pType.GetGUID(MFAttributesClsid.MF_MT_SUBTYPE, out subtype);
-            if (Failed(hr)) { goto done; }
-
-            // Choose a conversion function.
-            // (This also validates the format type.)
-
-            hr = SetConversionFunction(subtype);
-            if (Failed(hr)) { goto done; }
-
-            //
-            // Get some video attributes.
-            //
-
-            // Get the frame size.
-            hr = MFExtern.MFGetAttributeSize(pType, MFAttributesClsid.MF_MT_FRAME_SIZE, out m_width, out m_height);
-            if (Failed(hr)) { goto done; }
-
-            // Get the image stride.
-            hr = GetDefaultStride(pType, out m_lDefaultStride);
-            if (Failed(hr)) { goto done; }
-
-            // Get the pixel aspect ratio. Default: Assume square pixels (1:1)
-            hr = MFExtern.MFGetAttributeRatio(pType, MFAttributesClsid.MF_MT_PIXEL_ASPECT_RATIO, out PAR.Numerator, out PAR.Denominator);
-
-            if (Succeeded(hr))
-            {
-                m_PixelAR = PAR;
-            }
-            else
-            {
-                m_PixelAR.Numerator = m_PixelAR.Denominator = 1;
-            }
-
-            FourCC f = new FourCC(subtype);
-            m_format = (Format)f.ToInt32();
-
-            // Create Direct3D swap chains.
-
-            hr = CreateSwapChains();
-            if (Failed(hr)) { goto done; }
-
-            // Update the destination rectangle for the correct
-            // aspect ratio.
 
             UpdateDestinationRect();
 
             done:
-            if (Failed(hr))
-            {
-                m_format = Format.Unknown;
-                m_convertFn = null;
-            }
-
             return hr;
         }
 
-        //-------------------------------------------------------------------
-        // DrawFrame
-        //
-        // Draw the video frame.
-        //-------------------------------------------------------------------
         public HResult DrawFrame(IMFMediaBuffer pCaptureDeviceBuffer)
         {
-            if (m_convertFn == null)
-            {
-                return HResult.MF_E_INVALIDREQUEST;
-            }
-
             HResult hr = HResult.S_OK;
             IntPtr pbScanline0;
             int lStride = 0;
@@ -475,16 +280,14 @@ namespace VideoPlayer.Render
                 return HResult.S_OK;
             }
 
-            // Helper object to lock the video buffer.
-            using (VideoBufferLock xbuffer = new VideoBufferLock(pCaptureDeviceBuffer))
+            using (VideoBufferLock locker = new VideoBufferLock(pCaptureDeviceBuffer))
             {
                 hr = TestCooperativeLevel();
                 if (Failed(hr)) { goto done; }
 
                 // Lock the video buffer. This method returns a pointer to the first scan
                 // line in the image, and the stride in bytes.
-
-                hr = xbuffer.LockBuffer(m_lDefaultStride, m_height, out pbScanline0, out lStride);
+                hr = locker.LockBuffer(m_lDefaultStride, m_height, out pbScanline0, out lStride);
                 if (Failed(hr)) { goto done; }
 
                 // Get the swap-chain surface.
@@ -497,8 +300,7 @@ namespace VideoPlayer.Render
                 {
                     using (dr.Data)
                     {
-                        // Convert the frame. This also copies it to the Direct3D surface.
-                        m_convertFn(dr.Data.DataPointer, dr.Pitch, pbScanline0, lStride, m_width, m_height);
+                        ApplyToD3d(dr.Data.DataPointer, dr.Pitch, pbScanline0, lStride, m_width, m_height);
                     }
                 }
                 finally
@@ -521,7 +323,6 @@ namespace VideoPlayer.Render
 
             if (res.IsSuccess)
             {
-                // Present the frame.
                 res = m_pDevice.Present();
                 hr = (HResult)res.Code;
             }
@@ -533,50 +334,10 @@ namespace VideoPlayer.Render
             return hr;
         }
 
-        //-------------------------------------------------------------------
-        //  IsFormatSupported
-        //
-        //  Query if a format is supported.
-        //-------------------------------------------------------------------
-        public bool IsFormatSupported(Guid subtype)
-        {
-            for (int i = 0; i < VideoFormatDefs.Length; i++)
-            {
-                if (subtype == VideoFormatDefs[i].SubType)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        //-------------------------------------------------------------------
-        // GetFormat
-        //
-        // Get a supported output format by index.
-        //-------------------------------------------------------------------
-        public HResult GetFormat(int index, out Guid pSubtype)
-        {
-            if (index < VideoFormatDefs.Length)
-            {
-                pSubtype = VideoFormatDefs[index].SubType;
-                return HResult.S_OK;
-            }
-
-            pSubtype = Guid.Empty;
-            return HResult.MF_E_NO_MORE_TYPES;
-        }
-
         #endregion
 
         #region Static Methods
-
-        //-------------------------------------------------------------------
-        //
-        // Conversion functions
-        //
-        //-------------------------------------------------------------------
+         
         private static byte Clip(int clr)
         {
             return (byte)(clr < 0 ? 0 : (clr > 255 ? 255 : clr));
@@ -597,59 +358,10 @@ namespace VideoPlayer.Render
             return rgbq;
         }
 
-        //-------------------------------------------------------------------
-        // TransformImage_RGB24
-        //
-        // RGB-24 to RGB-32
-        //-------------------------------------------------------------------
-        unsafe private static void TransformImage_RGB24(IntPtr pDest, int lDestStride, IntPtr pSrc, int lSrcStride, int dwWidthInPixels, int dwHeightInPixels)
-        {
-            RGB24* source = (RGB24*)pSrc;
-            RGBQUAD* dest = (RGBQUAD*)pDest;
-
-            lSrcStride /= 3;
-            lDestStride /= 4;
-
-            for (int y = 0; y < dwHeightInPixels; y++)
-            {
-                for (int x = 0; x < dwWidthInPixels; x++)
-                {
-                    dest[x].R = source[x].rgbRed;
-                    dest[x].G = source[x].rgbGreen;
-                    dest[x].B = source[x].rgbBlue;
-                    dest[x].A = 0;
-                }
-
-                source += lSrcStride;
-                dest += lDestStride;
-            }
-        }
-
-        //-------------------------------------------------------------------
-        // TransformImage_RGB32
-        //
-        // RGB-32 to RGB-32
-        //
-        // Note: This function is needed to copy the image from system
-        // memory to the Direct3D surface.
-        //-------------------------------------------------------------------
-        private static void TransformImage_RGB32(IntPtr pDest, int lDestStride, IntPtr pSrc, int lSrcStride, int dwWidthInPixels, int dwHeightInPixels)
-        {
-            MediaFoundation.MFExtern.MFCopyImage(pDest, lDestStride, pSrc, lSrcStride, dwWidthInPixels * 4, dwHeightInPixels);
-        }
-
-        //-------------------------------------------------------------------
-        // TransformImage_YUY2
-        //
-        // YUY2 to RGB-32
-        //-------------------------------------------------------------------
-        unsafe private static void TransformImage_YUY2(
-            IntPtr pDest,
-            int lDestStride,
-            IntPtr pSrc,
-            int lSrcStride,
-            int dwWidthInPixels,
-            int dwHeightInPixels)
+        /// <summary>
+        /// Convert the frame. This also copies it to the Direct3D surface.
+        /// </summary> 
+        unsafe private static void ApplyToD3d(IntPtr pDest, int lDestStride, IntPtr pSrc, int lSrcStride, int dwWidthInPixels, int dwHeightInPixels)
         {
             YUYV* pSrcPel = (YUYV*)pSrc;
             RGBQUAD* pDestPel = (RGBQUAD*)pDest;
@@ -671,81 +383,6 @@ namespace VideoPlayer.Render
         }
 
         //-------------------------------------------------------------------
-        // TransformImage_NV12
-        //
-        // NV12 to RGB-32
-        //-------------------------------------------------------------------
-        unsafe private static void TransformImage_NV12(IntPtr pDest, int lDestStride, IntPtr pSrc, int lSrcStride, int dwWidthInPixels, int dwHeightInPixels)
-        {
-            Byte* lpBitsY = (byte*)pSrc;
-            Byte* lpBitsCb = lpBitsY + (dwHeightInPixels * lSrcStride);
-            Byte* lpBitsCr = lpBitsCb + 1;
-
-            Byte* lpLineY1;
-            Byte* lpLineY2;
-            Byte* lpLineCr;
-            Byte* lpLineCb;
-
-            Byte* lpDibLine1 = (Byte*)pDest;
-            for (UInt32 y = 0; y < dwHeightInPixels; y += 2)
-            {
-                lpLineY1 = lpBitsY;
-                lpLineY2 = lpBitsY + lSrcStride;
-                lpLineCr = lpBitsCr;
-                lpLineCb = lpBitsCb;
-
-                Byte* lpDibLine2 = lpDibLine1 + lDestStride;
-
-                for (UInt32 x = 0; x < dwWidthInPixels; x += 2)
-                {
-                    byte y0 = lpLineY1[0];
-                    byte y1 = lpLineY1[1];
-                    byte y2 = lpLineY2[0];
-                    byte y3 = lpLineY2[1];
-                    byte cb = lpLineCb[0];
-                    byte cr = lpLineCr[0];
-
-                    RGBQUAD r = ConvertYCrCbToRGB(y0, cr, cb);
-                    lpDibLine1[0] = r.B;
-                    lpDibLine1[1] = r.G;
-                    lpDibLine1[2] = r.R;
-                    lpDibLine1[3] = 0; // Alpha
-
-                    r = ConvertYCrCbToRGB(y1, cr, cb);
-                    lpDibLine1[4] = r.B;
-                    lpDibLine1[5] = r.G;
-                    lpDibLine1[6] = r.R;
-                    lpDibLine1[7] = 0; // Alpha
-
-                    r = ConvertYCrCbToRGB(y2, cr, cb);
-                    lpDibLine2[0] = r.B;
-                    lpDibLine2[1] = r.G;
-                    lpDibLine2[2] = r.R;
-                    lpDibLine2[3] = 0; // Alpha
-
-                    r = ConvertYCrCbToRGB(y3, cr, cb);
-                    lpDibLine2[4] = r.B;
-                    lpDibLine2[5] = r.G;
-                    lpDibLine2[6] = r.R;
-                    lpDibLine2[7] = 0; // Alpha
-
-                    lpLineY1 += 2;
-                    lpLineY2 += 2;
-                    lpLineCr += 2;
-                    lpLineCb += 2;
-
-                    lpDibLine1 += 8;
-                    lpDibLine2 += 8;
-                }
-
-                pDest += (2 * lDestStride);
-                lpBitsY += (2 * lSrcStride);
-                lpBitsCr += lSrcStride;
-                lpBitsCb += lSrcStride;
-            }
-        }
-
-        //-------------------------------------------------------------------
         // LetterBoxDstRect
         //
         // Takes a src rectangle and constructs the largest possible
@@ -753,8 +390,7 @@ namespace VideoPlayer.Render
         // such that the video maintains its current shape.
         //
         // This function assumes that pels are the same shape within both the
-        // source and destination rectangles.
-        //
+        // source and destination rectangles. 
         //-------------------------------------------------------------------
         private static Rectangle LetterBoxRect(Rectangle rcSrc, Rectangle rcDst)
         {
@@ -764,20 +400,17 @@ namespace VideoPlayer.Render
             if (Kernal32.MulDiv(rcSrc.Width, rcDst.Height, rcSrc.Height) <= rcDst.Width)
             {
                 // Column letter boxing ("pillar box")
-
                 iDstLBWidth = Kernal32.MulDiv(rcDst.Height, rcSrc.Width, rcSrc.Height);
                 iDstLBHeight = rcDst.Height;
             }
             else
             {
                 // Row letter boxing.
-
                 iDstLBWidth = rcDst.Width;
                 iDstLBHeight = Kernal32.MulDiv(rcDst.Width, rcSrc.Height, rcSrc.Width);
             }
 
             // Create a centered rectangle within the current destination rect
-
             int left = rcDst.Left + ((rcDst.Width - iDstLBWidth) / 2);
             int top = rcDst.Top + ((rcDst.Height - iDstLBHeight) / 2);
 
@@ -805,7 +438,6 @@ namespace VideoPlayer.Render
             if ((srcPAR.Numerator != 1) || (srcPAR.Denominator != 1))
             {
                 // Correct for the source's PAR.
-
                 if (srcPAR.Numerator > srcPAR.Denominator)
                 {
                     // The source has "wide" pixels, so stretch the width.
@@ -821,57 +453,6 @@ namespace VideoPlayer.Render
 
             rc = new Rectangle(0, 0, rcNewWidth, rcNewHeight);
             return rc;
-        }
-
-        //-----------------------------------------------------------------------------
-        // GetDefaultStride
-        //
-        // Gets the default stride for a video frame, assuming no extra padding bytes.
-        //
-        //-----------------------------------------------------------------------------
-        private static HResult GetDefaultStride(IMFMediaType pType, out int plStride)
-        {
-            int lStride = 0;
-            plStride = 0;
-
-            // Try to get the default stride from the media type.
-            HResult hr = pType.GetUINT32(MFAttributesClsid.MF_MT_DEFAULT_STRIDE, out lStride);
-
-            if (Failed(hr))
-            {
-                // Attribute not set. Try to calculate the default stride.
-                Guid subtype = Guid.Empty;
-
-                int width = 0;
-                int height = 0;
-
-                // Get the subtype and the image size.
-                hr = pType.GetGUID(MFAttributesClsid.MF_MT_SUBTYPE, out subtype);
-                if (Succeeded(hr))
-                {
-                    hr = MFExtern.MFGetAttributeSize(pType, MFAttributesClsid.MF_MT_FRAME_SIZE, out width, out height);
-                }
-
-                if (Succeeded(hr))
-                {
-                    FourCC f = new FourCC(subtype);
-
-                    hr = MFExtern.MFGetStrideForBitmapInfoHeader(f.ToInt32(), width, out lStride);
-                }
-
-                // Set the attribute for later reference.
-                if (Succeeded(hr))
-                {
-                    hr = pType.SetUINT32(MFAttributesClsid.MF_MT_DEFAULT_STRIDE, lStride);
-                }
-            }
-
-            if (Succeeded(hr))
-            {
-                plStride = lStride;
-            }
-
-            return hr;
         }
 
         public static Rectangle GetClientRect(IntPtr hWnd)

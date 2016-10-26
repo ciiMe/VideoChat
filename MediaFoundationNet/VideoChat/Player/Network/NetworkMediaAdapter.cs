@@ -141,8 +141,8 @@ namespace VideoPlayer.Network
 
                 VideoWidth = 0,
                 VideoHeight = 0,
-                VideoRatioD = 0,
-                VideoRatioN = 0
+                VideoRatioD = 1,
+                VideoRatioN = 1
             };
 
             IMFMediaType mediaType;
