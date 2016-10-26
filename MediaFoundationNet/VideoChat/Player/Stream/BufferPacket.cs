@@ -1,22 +1,19 @@
-﻿using MediaFoundation;
-using MediaFoundation.Misc;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace VideoPlayer.Stream
 {
-
     public class BufferPacket : IBufferPacket
     {
         public const int PacketHeadSize = 8;
-        
+
         protected List<byte[]> _buffers;
 
         public BufferPacket()
         {
             _buffers = new List<byte[]>();
         }
-        
+
         public void AddBuffer(byte[] data)
         {
             if (data == null || data.Length == 0)
@@ -157,7 +154,7 @@ namespace VideoPlayer.Stream
                     packet.AddBuffer(buffer);
                     extraLen -= buffer.Length;
 
-                    _buffers.RemoveAt(0); 
+                    _buffers.RemoveAt(0);
                 }
                 else
                 {
@@ -168,7 +165,7 @@ namespace VideoPlayer.Stream
                     packet.AddBuffer(take);
                     extraLen -= extraLen;
 
-                    _buffers[0] = left; 
+                    _buffers[0] = left;
                 }
             }
 
