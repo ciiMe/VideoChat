@@ -2,9 +2,9 @@
 using System.Drawing;
 using System.Runtime.InteropServices;
 
-namespace VideoPlayer.WindowsExtern
+namespace VideoPlayer.Utils
 {
-    public static class Win32
+    public static class WinExtern
     {
         public const int WM_PAINT = 0x000F;
         public const int WM_SIZE = 0x0005;
@@ -16,11 +16,11 @@ namespace VideoPlayer.WindowsExtern
         [DllImport("user32")]
         public extern static int PostMessage(IntPtr handle, int msg, IntPtr wParam, IntPtr lParam);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern int MulDiv(int nNumber, int nNumerator, int nDenominator);
-
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GetClientRect(IntPtr hWnd, out Rectangle lpRect); 
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern int MulDiv(int nNumber, int nNumerator, int nDenominator);
     }
 }

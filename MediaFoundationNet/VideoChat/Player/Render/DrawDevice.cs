@@ -7,7 +7,7 @@ using MediaFoundation.Misc;
 
 using SlimDX.Direct3D9;
 using SlimDX;
-using VideoPlayer.WindowsExtern;
+using VideoPlayer.Utils;
 
 namespace VideoPlayer.Render
 {
@@ -125,7 +125,7 @@ namespace VideoPlayer.Render
         {
             Rectangle rcSrc = new Rectangle(0, 0, _width, _height);
             Rectangle rcClient;
-            Win32.GetClientRect(_videoHwnd, out rcClient);
+            WinExtern.GetClientRect(_videoHwnd, out rcClient);
             Rectangle rectanClient = new Rectangle(rcClient.Left, rcClient.Top, rcClient.Right - rcClient.Left, rcClient.Bottom - rcClient.Top);
 
             rcSrc = CorrectAspectRatio(rcSrc, _pixelAR);
@@ -381,17 +381,17 @@ namespace VideoPlayer.Render
             int iDstLBWidth;
             int iDstLBHeight;
 
-            if (Kernal32.MulDiv(rcSrc.Width, rcDst.Height, rcSrc.Height) <= rcDst.Width)
+            if (WinExtern.MulDiv(rcSrc.Width, rcDst.Height, rcSrc.Height) <= rcDst.Width)
             {
                 // Column letter boxing ("pillar box")
-                iDstLBWidth = Kernal32.MulDiv(rcDst.Height, rcSrc.Width, rcSrc.Height);
+                iDstLBWidth = WinExtern.MulDiv(rcDst.Height, rcSrc.Width, rcSrc.Height);
                 iDstLBHeight = rcDst.Height;
             }
             else
             {
                 // Row letter boxing.
                 iDstLBWidth = rcDst.Width;
-                iDstLBHeight = Kernal32.MulDiv(rcDst.Width, rcSrc.Height, rcSrc.Width);
+                iDstLBHeight = WinExtern.MulDiv(rcDst.Width, rcSrc.Height, rcSrc.Width);
             }
 
             // Create a centered rectangle within the current destination rect
@@ -425,12 +425,12 @@ namespace VideoPlayer.Render
                 if (srcPAR.Numerator > srcPAR.Denominator)
                 {
                     // The source has "wide" pixels, so stretch the width.
-                    rcNewWidth = Kernal32.MulDiv(rc.Right, srcPAR.Numerator, srcPAR.Denominator);
+                    rcNewWidth = WinExtern.MulDiv(rc.Right, srcPAR.Numerator, srcPAR.Denominator);
                 }
                 else if (srcPAR.Numerator < srcPAR.Denominator)
                 {
                     // The source has "tall" pixels, so stretch the height.
-                    rcNewHeight = Kernal32.MulDiv(rc.Bottom, srcPAR.Denominator, srcPAR.Numerator);
+                    rcNewHeight = WinExtern.MulDiv(rc.Bottom, srcPAR.Denominator, srcPAR.Numerator);
                 }
                 // else: PAR is 1:1, which is a no-op.
             }

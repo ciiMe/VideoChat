@@ -129,8 +129,7 @@
     <Compile Include="Network\INetworkMediaAdapter.cs" />
     <Compile Include="Network\NetworkMediaAdapter.cs" />
     <Compile Include="Utils\BytesHelper.cs" />
-    <Compile Include="WindowsExtern\Kernal32.cs" />
-    <Compile Include="WindowsExtern\Win32.cs" />
+    <Compile Include="Utils\WinExtern.cs" />
     <Compile Include="_Base\MFGuids.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
