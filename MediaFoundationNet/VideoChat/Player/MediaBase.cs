@@ -5,6 +5,15 @@ using System.Runtime.InteropServices;
 
 namespace VideoPlayer
 {
+    public struct StspSampleHeader
+    {
+        public int dwStreamId;
+        public long ullTimestamp;
+        public long ullDuration;
+        public int dwFlags;
+        public int dwFlagMasks;
+    };
+
     public enum StspSampleFlags
     {
         StspSampleFlag_BottomFieldFirst,
@@ -44,9 +53,9 @@ namespace VideoPlayer
 
     public struct StspDescription
     {
-        public uint cNumStreams;
+        public uint StreamCount;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
-        public StspStreamDescription[] aStreams;
+        public StspStreamDescription[] StreamDescriptions;
     };
 
     // Possible states of the stsp source object

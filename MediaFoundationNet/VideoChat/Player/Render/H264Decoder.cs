@@ -67,8 +67,7 @@ namespace VideoPlayer.Render
         private int _videoStreamId;
         private IMFMediaType _streamMediaType;
 
-        private int _videoWitdh, _videoHeight;
-        private int _videoFrameRate;
+        private int _videoWitdh, _videoHeight; 
         private int _videoRatioN, _videoRatioD;
 
         public event OnSampleDecodeCompleteEventHandler OnSampleDecodeComplete;

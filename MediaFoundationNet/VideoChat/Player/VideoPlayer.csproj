@@ -105,12 +105,8 @@
   <ItemGroup>
     <Compile Include="INetworkStreamProvider.cs" />
     <Compile Include="IPlayer.cs" />
-    <Compile Include="MediaSource\MediaBase.cs" />
-    <Compile Include="MediaSource\MediaStream.cs" />
-    <Compile Include="MediaSource\MediaStructs.cs" />
-    <Compile Include="MediaSource\Validation.cs" />
     <Compile Include="DialogInvoker.cs" />
-    <Compile Include="MediaSource\NetworkSource.cs" />
+    <Compile Include="MediaBase.cs" />
     <Compile Include="Network\INetworkClient.cs" />
     <Compile Include="Network\NetworkClient.cs" />
     <Compile Include="Program.cs" />
