@@ -96,8 +96,9 @@ namespace VideoPlayer.Render
 
         public void Stop()
         {
-            _drawDevice.DestroyDevice();
+            _networkStreamAdapter.Stop();
             _decoder.Release();
+            _drawDevice.DestroyDevice();
         }
 
         private void RenderForm_FormClosed(object sender, FormClosedEventArgs e)
