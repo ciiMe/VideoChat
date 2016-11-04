@@ -1,8 +1,11 @@
 ﻿using MediaFoundation;
 using MediaFoundation.Misc;
 using System;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using VideoPlayer.Network;
+using VideoPlayer.Utils;
 
 namespace VideoPlayer.Render
 {
@@ -15,8 +18,10 @@ namespace VideoPlayer.Render
         private int _videoWitdh, _videoHeight;
         private int _videoRatioN, _videoRatioD;
 
-        private DrawDevice _drawDevice;
         private H264Decoder _decoder;
+        private byte[] _lastSampleBuffer;
+
+        private DrawDevice _drawDevice;
 
         public bool IsStarted => _networkStreamAdapter.IsStarted;
 
@@ -25,7 +30,7 @@ namespace VideoPlayer.Render
             InitializeComponent();
 
             _drawDevice = new DrawDevice();
-            ThrowIfError(_drawDevice.CreateDevice(Handle));
+            ThrowIfError(_drawDevice.Initialize(Handle));
 
             _networkStreamAdapter = new NetworkMediaAdapter();
             _networkStreamAdapter.IsAutoStart = true;
@@ -55,7 +60,7 @@ namespace VideoPlayer.Render
                 _videoRatioD = header.VideoRatioD;
                 _videoRatioN = header.VideoRatioN;
 
-                _drawDevice.Initialize(_videoWitdh, _videoHeight, new MFRatio(_videoRatioN, _videoRatioD));
+                _drawDevice.InitializeRenderSize(_videoWitdh, _videoHeight, new MFRatio(_videoRatioN, _videoRatioD));
                 _decoder.initialize(_videoStreamId, _videoMediaType);
 
                 break;
@@ -75,6 +80,8 @@ namespace VideoPlayer.Render
         private void _decoder_OnSampleDecodeComplete(object sender, IMFMediaBuffer buffer)
         {
             //todo: check status. closed or stopped...
+            //cache last sample, used for resize.
+            BytesHelper.ConvertToByteArray(buffer, out _lastSampleBuffer);
             _drawDevice.DrawFrame(buffer);
         }
 
@@ -98,12 +105,28 @@ namespace VideoPlayer.Render
         {
             _networkStreamAdapter.Stop();
             _decoder.Release();
-            _drawDevice.DestroyDevice();
+            _drawDevice.Destroy();
         }
 
         private void RenderForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             Stop();
+        }
+
+        private void RenderForm_Resize(object sender, EventArgs e)
+        {
+            IMFSample sample;
+            if (MFError.Failed(BytesHelper.ConvertToSample(_lastSampleBuffer, out sample)))
+            {
+                return;
+            }
+
+            if (MFError.Failed(_drawDevice.FitVideoClientSize()))
+            {
+                return;
+            }
+
+            _decoder.ProcessSample(sample);
         }
 
         private void ThrowIfError(HResult hr)

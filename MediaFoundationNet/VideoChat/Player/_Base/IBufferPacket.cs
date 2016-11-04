@@ -23,7 +23,7 @@ namespace VideoPlayer
         /// Get the head buffer in the list.
         /// </summary>
         byte[] GetBuffer(int len);
-
+        
         /// <summary>
         /// Take the head buffer out of the list.
         /// </summary>

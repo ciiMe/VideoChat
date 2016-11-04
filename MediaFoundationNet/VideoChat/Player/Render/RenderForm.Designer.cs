@@ -38,6 +38,7 @@
             this.Name = "RenderForm";
             this.Text = "RenderForm";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.RenderForm_FormClosed);
+            this.Resize += new System.EventHandler(this.RenderForm_Resize);
             this.ResumeLayout(false);
 
         }

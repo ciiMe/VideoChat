@@ -318,7 +318,7 @@ namespace VideoPlayer.Network
         }
 
         public void Start()
-        { 
+        {
             SendStartRequest();
         }
 
@@ -362,6 +362,6 @@ namespace VideoPlayer.Network
         private void Throw(HResult hr)
         {
             MFError.ThrowExceptionForHR(hr);
-        }
+        } 
     }
 }

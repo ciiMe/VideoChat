@@ -53,7 +53,7 @@ namespace VideoPlayer.Render
         private MFRatio _pixelAR;
         // Destination rectangle
         private Rectangle _destRect;
-
+        
         public DrawDevice()
         {
             _videoHwnd = IntPtr.Zero;
@@ -135,7 +135,7 @@ namespace VideoPlayer.Render
 
         #region Public Methods
 
-        public HResult CreateDevice(IntPtr videoHwnd)
+        public HResult Initialize(IntPtr videoHwnd)
         {
             if (_device != null)
             {
@@ -165,7 +165,34 @@ namespace VideoPlayer.Render
             return HResult.S_OK;
         }
 
-        public HResult ResetDevice()
+        /// <summary>
+        /// Initialize the video render, be sure initialize(hwnd) is called before this method.
+        /// </summary> 
+        public HResult InitializeRenderSize(int videoWidth, int videoHeight, MFRatio videoRatio)
+        {
+            HResult hr = HResult.S_OK;
+
+            _width = videoWidth;
+            _height = videoHeight;
+            _pixelAR = videoRatio;
+
+            FourCC f = new FourCC(MFMediaType.YUY2);
+            hr = MFExtern.MFGetStrideForBitmapInfoHeader(f.ToInt32(), videoWidth, out _defaultStride);
+
+            hr = CreateSwapChains();
+            if (Failed(hr)) { goto done; }
+
+            UpdateDestinationRect();
+
+            done:
+            return hr;
+        }
+
+        /// <summary>
+        /// Resizes the video size by the client size of video window.
+        /// Please call DrawFrame(...) after this action if the media stream has been stopped as the DrawDevice dose not cache any sample.
+        /// </summary>
+        public HResult FitVideoClientSize()
         {
             HResult hr = HResult.S_OK;
 
@@ -186,18 +213,18 @@ namespace VideoPlayer.Render
 
                     if (r.IsFailure)
                     {
-                        DestroyDevice();
+                        Destroy();
                     }
                 }
                 catch
                 {
-                    DestroyDevice();
+                    Destroy();
                 }
             }
 
             if (_device == null)
             {
-                hr = CreateDevice(_videoHwnd);
+                hr = Initialize(_videoHwnd);
 
                 if (Failed(hr))
                 {
@@ -216,7 +243,7 @@ namespace VideoPlayer.Render
             return hr;
         }
 
-        public void DestroyDevice()
+        public void Destroy()
         {
             if (_swapChain != null)
             {
@@ -228,27 +255,6 @@ namespace VideoPlayer.Render
                 _device.Dispose();
                 _device = null;
             }
-        }
-
-        public HResult Initialize(int videoWidth, int videoHeight, MFRatio videoRatio)
-        {
-            HResult hr = HResult.S_OK;
-
-            _width = videoWidth;
-            _height = videoHeight;
-            _pixelAR = videoRatio;
-
-            FourCC f = new FourCC(MFMediaType.YUY2);
-
-            hr = MFExtern.MFGetStrideForBitmapInfoHeader(f.ToInt32(), videoWidth, out _defaultStride);
-
-            hr = CreateSwapChains();
-            if (Failed(hr)) { goto done; }
-
-            UpdateDestinationRect();
-
-            done:
-            return hr;
         }
 
         public HResult DrawFrame(IMFMediaBuffer pCaptureDeviceBuffer)
@@ -298,8 +304,7 @@ namespace VideoPlayer.Render
 
             // Color fill the back buffer.
             pBB = _device.GetBackBuffer(0, 0);
-
-            _device.ColorFill(pBB, Color.FromArgb(0, 0, 0x80));
+            _device.ColorFill(pBB, Color.FromArgb(255, 255, 255));
 
             // Blit the frame.
             Rectangle r = new Rectangle(0, 0, _width, _height);

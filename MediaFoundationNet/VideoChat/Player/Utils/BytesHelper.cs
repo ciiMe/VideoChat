@@ -178,5 +178,68 @@ namespace VideoPlayer.Utils
             buffer = null;
             return hr;
         }
+
+        public static HResult ConvertToSample(byte[] sampleBuffer, out IMFSample outSample)
+        {
+            HResult hr = HResult.S_OK;
+            outSample = null;
+
+            IMFMediaBuffer buffer;
+            IntPtr pBuffer;
+            int len = sampleBuffer.Length;
+            int maxLen;
+
+            if (MFError.Failed(hr = MFExtern.MFCreateMemoryBuffer(len, out buffer)))
+            {
+                return hr;
+            }
+
+            if (MFError.Failed(hr = buffer.SetCurrentLength(len)))
+            {
+                return hr;
+            }
+
+            if (MFError.Failed(hr = buffer.Lock(out pBuffer, out maxLen, out len)))
+            {
+                return hr;
+            }
+            Marshal.Copy(sampleBuffer, 0, pBuffer, len);
+            if (MFError.Failed(hr = buffer.Unlock()))
+            {
+                return hr;
+            }
+
+            IMFSample sample;
+            if (MFError.Failed(hr = MFExtern.MFCreateSample(out sample)))
+            {
+                return hr;
+            }
+            if (MFError.Failed(hr = sample.AddBuffer(buffer)))
+            {
+                return hr;
+            }
+            outSample = sample;
+            return hr;
+        }
+
+        public static HResult ConvertToByteArray(IMFMediaBuffer buffer, out byte[] outBuffer)
+        {
+            HResult hr = HResult.S_OK;
+            outBuffer = null;
+
+            int len, maxLen;
+            IntPtr pBuffer;
+
+            if (MFError.Failed(hr = buffer.Lock(out pBuffer, out maxLen, out len)))
+            {
+                return hr;
+            }
+
+            outBuffer = new byte[len];
+            Marshal.Copy(pBuffer, outBuffer, 0, len);
+            hr = buffer.Unlock();
+
+            return hr;
+        }
     }
 }
